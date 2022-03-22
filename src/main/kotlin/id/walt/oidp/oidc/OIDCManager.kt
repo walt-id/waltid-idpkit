@@ -87,6 +87,10 @@ class OIDCManager: VerifierManager() {
     return super.verifyResponse(reqId, id_token, vp_token)
   }
 
+  override fun getVerificationRedirectionUri(verificationResponse: ResponseVerification?): URI {
+    // TODO: override
+    return super.getVerificationRedirectionUri(verificationResponse)
+  }
 
   override val verifierContext = UserContext(
     contextId = "OIDCManager",
