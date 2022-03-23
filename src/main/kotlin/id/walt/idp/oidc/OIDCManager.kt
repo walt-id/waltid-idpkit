@@ -1,23 +1,31 @@
 package id.walt.idp.oidc
 
+import com.auth0.jwt.JWT
+import com.auth0.jwt.JWTVerifier
+import com.auth0.jwt.algorithms.Algorithm
+import com.auth0.jwt.exceptions.JWTDecodeException
+import com.auth0.jwt.interfaces.DecodedJWT
 import com.google.common.cache.CacheBuilder
-import com.nimbusds.oauth2.sdk.AuthorizationCode
-import com.nimbusds.oauth2.sdk.AuthorizationRequest
-import com.nimbusds.oauth2.sdk.GrantType
-import com.nimbusds.oauth2.sdk.ResponseType
+import com.nimbusds.jwt.JWTClaimsSet
+import com.nimbusds.oauth2.sdk.*
 import com.nimbusds.oauth2.sdk.id.Issuer
+import com.nimbusds.oauth2.sdk.token.*
+import com.nimbusds.openid.connect.sdk.OIDCScopeValue
 import com.nimbusds.openid.connect.sdk.SubjectType
 import com.nimbusds.openid.connect.sdk.op.OIDCProviderMetadata
 import id.walt.idp.IDPManager
 import id.walt.idp.IDPType
 import id.walt.idp.config.IDPConfig
 import id.walt.idp.siop.SIOPState
+import id.walt.services.jwt.JwtService
 import id.walt.services.oidc.OIDCUtils
 import id.walt.verifier.backend.SIOPResponseVerificationResult
 import id.walt.verifier.backend.VerifierConfig
 import id.walt.verifier.backend.VerifierManager
 import io.javalin.http.BadRequestResponse
+import io.javalin.http.ForbiddenResponse
 import io.javalin.http.InternalServerErrorResponse
+import javalinjwt.JWTProvider
 import java.net.URI
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
@@ -80,6 +88,38 @@ object OIDCManager : IDPManager {
       state = SIOPState(IDP_TYPE, session.id).encode()
     )
     return URI.create("${session.wallet.url}/${session.wallet.presentPath}?${siopReq.toUriQueryString()}")
+  }
+
+  fun getAccessTokenFor(code: String, redirect_uri: String): AccessTokenResponse {
+    val session = getOIDCSession(code) ?: throw BadRequestResponse("Invalid authorization code")
+    if(!session.authRequest.redirectionURI.equals(URI.create(redirect_uri)))
+      throw ForbiddenResponse("Redirection URI doesn't match OIDC session for given code")
+    return AccessTokenResponse(
+      Tokens(
+        BearerAccessToken(
+          accessTokenProvider.generateToken(session),
+          EXPIRATION_TIME.seconds,
+          Scope(OIDCScopeValue.OPENID)
+        ),
+        RefreshToken()
+      )
+    )
+  }
+
+  val jwtAlgorithm = Algorithm.HMAC256("FOO") // TODO: set algorithm and key according to key config
+
+  val accessTokenProvider = JWTProvider(
+    jwtAlgorithm,
+    { session: OIDCSession, alg: Algorithm? ->
+      JWT.create().withSubject(session.id).withAudience(session.authRequest.redirectionURI.toString()).sign(alg)
+    },
+    JWT.require(jwtAlgorithm).build()
+  )
+
+  fun decodeAccessToken(decodedJWT: DecodedJWT): OIDCSession {
+    val session = sessionCache.getIfPresent(decodedJWT.subject) ?: throw JWTDecodeException("Invalid oidc session id")
+    if(!decodedJWT.audience.contains(session.authRequest.redirectionURI.toString())) throw JWTDecodeException("Invalid audience for session")
+    return session
   }
 
   private fun errorDescriptionFor(verificationResult: SIOPResponseVerificationResult): String {

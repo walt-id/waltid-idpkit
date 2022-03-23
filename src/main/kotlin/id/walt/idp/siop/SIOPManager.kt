@@ -14,8 +14,6 @@ import io.javalin.http.BadRequestResponse
 import java.net.URI
 
 class SIOPManager: VerifierManager() {
-  override val verifierApiPath = "api/siop"
-  override val verifierUiPath = ""
 
   override val verifierContext = UserContext(
     contextId = "SIOPManager",
