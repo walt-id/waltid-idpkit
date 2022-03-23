@@ -57,10 +57,10 @@ participant "SSI Identity Provider\nby walt.id" as IDP
 participant "SSI Wallet" as WW
 
 NP->BRW: Open Web Application
-BRW->APP: Connect to SSI wallet page
+BRW->APP: Load "Connect to SSI wallet" page
 APP->IDP: Fetch OIDC discovery document
 IDP-->APP: Discovery document\nwith supported_wallets, supported_claims (vp_token)
-APP-->BRW: Show connect to SSI wallet
+APP-->BRW: "Connect to SSI wallet" page
 NP->BRW: Click "Connect to SSI wallet"
 BRW->APP: Connect to SSI wallet
 opt with pushed authorization request
@@ -82,7 +82,7 @@ BRW->WW: Finalize SIOP presentation request
 WW->WW: Generate SIOP response
 WW-->BRW: Redirect to IDP with SIOP response
 BRW->IDP: Load SIOP response verification endpoint (form_post)
-IDP->IDP: Verify SIOP response, id_token, vp_token, etc\ncache verified vp_token
+IDP->IDP: Verify id_token, vp_token\ncache verified vp_token
 IDP->IDP: Generate authorization code
 IDP-->BRW: Redirect to Web Application with authorization code
 BRW->APP: Load OIDC authorization callback endpoint\nwith authorization code
