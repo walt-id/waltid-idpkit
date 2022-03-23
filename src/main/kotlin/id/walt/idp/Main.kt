@@ -1,6 +1,6 @@
-package id.walt.oidp
+package id.walt.idp
 
-import id.walt.oidp.oidc.OIDCController
+import id.walt.idp.oidc.OIDCController
 import id.walt.servicematrix.ServiceMatrix
 import id.walt.verifier.backend.VerifierController
 import id.walt.webwallet.backend.rest.RestAPI

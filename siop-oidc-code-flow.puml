@@ -1,0 +1,97 @@
+@startuml
+'https://plantuml.com/sequence-diagram
+
+skinparam classFontColor 007BFF
+skinparam classFontSize 12
+skinparam classFontName Aapex
+skinparam backgroundColor white
+skinparam minClassWidth 155
+skinparam nodesep 34
+skinparam ranksep 70
+
+skinparam sequence {
+ArrowColor 007BFF
+ActorBorderColor 007BFF
+LifeLineBorderColor 007BFF
+LifeLineBackgroundColor 007BFF
+
+ParticipantBorderColor 007BFF
+ParticipantBackgroundColor 007BFF
+ParticipantFontName Impact
+ParticipantFontSize 17
+ParticipantFontColor #A9DCDF
+
+'ActorBackgroundColor aqua
+ActorFontColor 007BFF
+ActorFontSize 17
+ActorFontName Aapex
+}
+
+skinparam class {
+BorderColor 007BFF
+ArrowColor 007BFF
+BackgroundColor white
+}
+
+skinparam interface {
+BorderColor 007BFF
+ArrowColor 007BFF
+}
+
+skinparam note {
+BorderColor 007BFF
+BackgroundColor 7ACFF5
+}
+
+
+autonumber
+header SSI/OIDC identity provider flow (code flow)
+title
+SSI/OIDC identity provider flow (code flow)
+end title
+autonumber
+actor "Natural Person" as NP
+participant Browser as BRW
+participant "Web Application\n(3rd party)" as APP
+participant "SSI Identity Provider\nby walt.id" as IDP
+participant "SSI Wallet" as WW
+
+NP->BRW: Open Web Application
+BRW->APP: Connect to SSI wallet page
+APP->IDP: Fetch OIDC discovery document
+IDP-->APP: Discovery document\nwith supported_wallets, supported_claims (vp_token)
+APP-->BRW: Show connect to SSI wallet
+NP->BRW: Click "Connect to SSI wallet"
+BRW->APP: Connect to SSI wallet
+opt with pushed authorization request
+APP->IDP: Push OIDC authorization request\nwith vp_token claim
+IDP->IDP: Init OIDC session\nverify authorization request
+IDP-->APP: pushed authorization response
+end
+APP-->BRW: Redirect to OIDC authorization endpoint
+BRW->IDP: Load authorization endpoint\nwith PAR request_uri, OR authorization request query params with vp_token claim
+opt with authorization query params
+IDP->IDP: Init OIDC session\nverify authorization request
+end
+IDP->IDP: Generate SIOPv2 request for wallet
+IDP-->BRW: Redirect to wallet with SIOP request
+BRW->WW: Load wallet SIOP presentation enpoint
+WW-->BRW: Web Wallet (Login, SIOP presentation request page)
+NP->BRW: Authenticate to wallet\nConfirm SIOP presentation request
+BRW->WW: Finalize SIOP presentation request
+WW->WW: Generate SIOP response
+WW-->BRW: Redirect to IDP with SIOP response
+BRW->IDP: Load SIOP response verification endpoint (form_post)
+IDP->IDP: Verify SIOP response, id_token, vp_token, etc\ncache verified vp_token
+IDP->IDP: Generate authorization code
+IDP-->BRW: Redirect to Web Application with authorization code
+BRW->APP: Load OIDC authorization callback endpoint\nwith authorization code
+APP->IDP: Fetch access_token for authorization code
+IDP-->APP: access_token
+APP->IDP: Fetch from userInfo endpoint\nwith access_token
+IDP-->APP: userInfo (verified vp_token)
+APP->APP: Create authorized user session (or likewise)
+APP-->BRW: Redirect to web UI (protected zone)
+
+
+@enduml

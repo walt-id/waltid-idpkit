@@ -1,39 +1,33 @@
-package id.walt.oidp.oidc
+package id.walt.idp.oidc
 
 import com.google.common.cache.CacheBuilder
+import com.nimbusds.oauth2.sdk.AuthorizationCode
 import com.nimbusds.oauth2.sdk.AuthorizationRequest
 import com.nimbusds.oauth2.sdk.GrantType
 import com.nimbusds.oauth2.sdk.ResponseType
 import com.nimbusds.oauth2.sdk.id.Issuer
-import com.nimbusds.openid.connect.sdk.OIDCScopeValue
 import com.nimbusds.openid.connect.sdk.SubjectType
 import com.nimbusds.openid.connect.sdk.op.OIDCProviderMetadata
-import id.walt.WALTID_DATA_ROOT
-import id.walt.issuer.backend.IssuanceSession
-import id.walt.issuer.backend.IssuerManager
-import id.walt.model.oidc.SIOPv2Request
-import id.walt.model.oidc.VpTokenClaim
-import id.walt.oidp.config.OIDPConfig
-import id.walt.servicematrix.ServiceRegistry
-import id.walt.services.hkvstore.FileSystemHKVStore
-import id.walt.services.hkvstore.FilesystemStoreConfig
-import id.walt.services.keystore.HKVKeyStoreService
+import id.walt.idp.IDPManager
+import id.walt.idp.IDPType
+import id.walt.idp.config.IDPConfig
+import id.walt.idp.siop.SIOPState
 import id.walt.services.oidc.OIDCUtils
-import id.walt.services.vcstore.HKVVcStoreService
-import id.walt.verifier.backend.ResponseVerification
+import id.walt.verifier.backend.SIOPResponseVerificationResult
 import id.walt.verifier.backend.VerifierConfig
 import id.walt.verifier.backend.VerifierManager
-import id.walt.webwallet.backend.context.UserContext
 import io.javalin.http.BadRequestResponse
 import io.javalin.http.InternalServerErrorResponse
 import java.net.URI
+import java.net.URLEncoder
+import java.nio.charset.StandardCharsets
 import java.time.Duration
 import java.util.*
 import java.util.concurrent.TimeUnit
 
-class OIDCManager: VerifierManager() {
+object OIDCManager : IDPManager {
   val EXPIRATION_TIME: Duration = Duration.ofMinutes(5)
-  val sessionCache = CacheBuilder.newBuilder().expireAfterAccess(IssuerManager.EXPIRATION_TIME.seconds, TimeUnit.SECONDS).build<String, OIDCSession>()
+  val sessionCache = CacheBuilder.newBuilder().expireAfterAccess(EXPIRATION_TIME.seconds, TimeUnit.SECONDS).build<String, OIDCSession>()
 
   val oidcProviderMetadata get() = OIDCProviderMetadata(
     Issuer(oidcApiUrl),
@@ -60,6 +54,7 @@ class OIDCManager: VerifierManager() {
     val vpTokenClaim = OIDCUtils.getVCClaims(authRequest).vp_token ?: throw BadRequestResponse("Missing VP token claim in authorization request")
     val walletId = authRequest.customParameters["walletId"]?.firstOrNull() ?: VerifierConfig.config.wallets.values.map { wc -> wc.id }.firstOrNull() ?: throw InternalServerErrorResponse("Known wallets not configured")
     val wallet = VerifierConfig.config.wallets[walletId] ?: throw BadRequestResponse("No wallet configuration found for given walletId")
+    if(authRequest.responseType != ResponseType.CODE) throw BadRequestResponse("Only code flow is currently supported")
     return OIDCSession(
       id = UUID.randomUUID().toString(),
       authRequest = authRequest,
@@ -72,34 +67,45 @@ class OIDCManager: VerifierManager() {
     return sessionCache.getIfPresent(id.replaceFirst("urn:ietf:params:oauth:request_uri:",""))
   }
 
-  override val verifierApiPath: String = "api/siop"
-  override val verifierUiPath: String = ""
+  fun updateOIDCSession(session: OIDCSession) {
+    sessionCache.put(session.id, session)
+  }
+
   val oidcApiPath: String = "api/oidc"
-  val oidcApiUrl: String get() = "${OIDPConfig.config.externalUrl}/$oidcApiPath"
+  val oidcApiUrl: String get() = "${IDPConfig.config.externalUrl}/$oidcApiPath"
 
   fun getWalletRedirectionUri(session: OIDCSession): URI {
-    val siopReq = newRequest(session.vpTokenClaim)
+    val siopReq = VerifierManager.getService().newRequest(
+      tokenClaim = session.vpTokenClaim,
+      state = SIOPState(IDP_TYPE, session.id).encode()
+    )
     return URI.create("${session.wallet.url}/${session.wallet.presentPath}?${siopReq.toUriQueryString()}")
   }
 
-  override fun verifyResponse(reqId: String, id_token: String, vp_token: String): ResponseVerification? {
-    // TODO: override ?
-    return super.verifyResponse(reqId, id_token, vp_token)
+  private fun errorDescriptionFor(verificationResult: SIOPResponseVerificationResult): String {
+    verificationResult.subject ?: return "Subject not defined"
+    verificationResult.request ?: return "No SIOP request defined"
+    if(!verificationResult.id_token_valid) return "Invalid id_token"
+    val vpVerificationResult = verificationResult.verification_result ?: return "Verifiable presentation not verified"
+    if(!vpVerificationResult.valid) return "Verifiable presentation invalid: ${vpVerificationResult}"
+    return "Invalid SIOP response verification result"
   }
 
-  override fun getVerificationRedirectionUri(verificationResponse: ResponseVerification?): URI {
-    // TODO: override
-    return super.getVerificationRedirectionUri(verificationResponse)
+  override fun continueIDPSessionForSIOPResponse(sessionId: String, verificationResult: SIOPResponseVerificationResult): URI {
+    val session = getOIDCSession(sessionId) ?: throw BadRequestResponse("OIDC session invalid or expired")
+    if(verificationResult.isValid) {
+      session.verificationResult = verificationResult
+      updateOIDCSession(session)
+      return URI.create("${session.authRequest.redirectionURI}" +
+          "?code=${sessionId}" +
+          "&state=${session.authRequest.state}")
+    } else {
+      return URI.create("${session.authRequest.redirectionURI}" +
+          "?error=invalid_request" +
+          "&error_description=${URLEncoder.encode(errorDescriptionFor(verificationResult), StandardCharsets.UTF_8)}" +
+          "&state=${session.authRequest.state}")
+    }
   }
 
-  override val verifierContext = UserContext(
-    contextId = "OIDCManager",
-    hkvStore = FileSystemHKVStore(FilesystemStoreConfig("${WALTID_DATA_ROOT}/data/oidc")),
-    keyStore = HKVKeyStoreService(),
-    vcStore = HKVVcStoreService()
-  )
-
-  companion object {
-    fun getService() = ServiceRegistry.getService<VerifierManager>() as OIDCManager
-  }
+  override val IDP_TYPE = IDPType.OIDC
 }

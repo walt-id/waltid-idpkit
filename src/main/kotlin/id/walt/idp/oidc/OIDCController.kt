@@ -1,17 +1,9 @@
-package id.walt.oidp.oidc
+package id.walt.idp.oidc
 
 import com.nimbusds.oauth2.sdk.AuthorizationRequest
-import com.nimbusds.oauth2.sdk.GrantType
 import com.nimbusds.oauth2.sdk.PushedAuthorizationSuccessResponse
-import com.nimbusds.oauth2.sdk.ResponseType
-import com.nimbusds.oauth2.sdk.http.HTTPRequest
 import com.nimbusds.oauth2.sdk.http.ServletUtils
-import com.nimbusds.oauth2.sdk.id.Issuer
-import com.nimbusds.openid.connect.sdk.SubjectType
 import com.nimbusds.openid.connect.sdk.op.OIDCProviderMetadata
-import id.walt.issuer.backend.IssuerController
-import id.walt.oidp.config.OIDPConfig
-import id.walt.verifier.backend.VerifierConfig
 import io.javalin.apibuilder.ApiBuilder.*
 import io.javalin.http.BadRequestResponse
 import io.javalin.http.Context
@@ -67,19 +59,19 @@ object OIDCController {
     }
 
   fun openIdConfiguration(ctx: Context) {
-    ctx.json(OIDCManager.getService().oidcProviderMetadata.toJSONObject())
+    ctx.json(OIDCManager.oidcProviderMetadata.toJSONObject())
   }
 
   fun pushedAuthorizationRequest(ctx: Context) {
     val authReq = AuthorizationRequest.parse(ServletUtils.createHTTPRequest(ctx.req))
-    val oidcSession = OIDCManager.getService().initOIDCSession(authReq)
-    ctx.status(HttpCode.CREATED).json(PushedAuthorizationSuccessResponse(URI.create("urn:ietf:params:oauth:request_uri:${oidcSession.id}"), OIDCManager.getService().EXPIRATION_TIME.seconds).toJSONObject())
+    val oidcSession = OIDCManager.initOIDCSession(authReq)
+    ctx.status(HttpCode.CREATED).json(PushedAuthorizationSuccessResponse(URI.create("urn:ietf:params:oauth:request_uri:${oidcSession.id}"), OIDCManager.EXPIRATION_TIME.seconds).toJSONObject())
   }
 
   fun authorizationRequest(ctx: Context) {
     val oidcSession = ctx.queryParam("request_uri")?.let {
-      OIDCManager.getService().getOIDCSession(it) ?: throw BadRequestResponse("Session not found or expired")
-    } ?: OIDCManager.getService().initOIDCSession(
+      OIDCManager.getOIDCSession(it) ?: throw BadRequestResponse("Session not found or expired")
+    } ?: OIDCManager.initOIDCSession(
       kotlin.runCatching {
         AuthorizationRequest.parse(ServletUtils.createHTTPRequest(ctx.req))
       }.getOrElse {
@@ -87,7 +79,7 @@ object OIDCController {
       }
     )
 
-    ctx.status(HttpCode.FOUND).header("Location", OIDCManager.getService().getWalletRedirectionUri(oidcSession).toString())
+    ctx.status(HttpCode.FOUND).header("Location", OIDCManager.getWalletRedirectionUri(oidcSession).toString())
   }
 
   fun tokenRequest(ctx: Context) {
