@@ -5,4 +5,4 @@ SSI Identity provider, supporting OIDC
 
 Request a vp_token via OIDC code flow:
 
-![SIOP/OIDC code flow](./siop-idp-flow.png)
+![SIOP/OIDC code flow](./siop-oidc-code-flow.png)
