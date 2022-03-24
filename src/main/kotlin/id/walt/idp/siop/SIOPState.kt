@@ -9,11 +9,7 @@ data class SIOPState (
   val idpType: IDPType,
   val idpSessionId: String
     ) {
-  override fun toString(): String {
-    return Base64.getUrlEncoder().encodeToString(Klaxon().toJsonString(this).toByteArray(StandardCharsets.UTF_8))
-  }
-
-  fun encode() = toString()
+  fun encode(): String = Base64.getUrlEncoder().encodeToString(Klaxon().toJsonString(this).toByteArray(StandardCharsets.UTF_8))
 
   companion object {
     fun decode(state: String): SIOPState? {

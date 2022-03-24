@@ -6,9 +6,9 @@ import id.walt.webwallet.backend.rest.RestAPI
 import io.javalin.apibuilder.ApiBuilder
 
 object IDPRestAPI {
-  fun start() {
+  fun start(bindAddress: String = "localhost", port: Int = 8080) {
     RestAPI.apiTitle = "walt.id OpenID Provider"
-    RestAPI.start("localhost", 8080, IDPAccessManager) {
+    RestAPI.start(bindAddress, port, IDPAccessManager) {
       ApiBuilder.path("api") {
         ApiBuilder.path("oidc") {
           OIDCController.routes

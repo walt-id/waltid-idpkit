@@ -57,9 +57,17 @@ object OIDCController {
       ), OIDCAuthorizationRole.OIDC_CLIENT)
       post("userInfo", documented(
         document().operation {
-         it.summary("User Info endpoint")
+         it.summary("User Info POST endpoint")
            .addTagsItem("OIDC")
            .operationId("userInfo")
+        },
+        OIDCController::userInfoRequest
+      ), OIDCAuthorizationRole.ACCESS_TOKEN)
+      get("userInfo", documented(
+        document().operation {
+          it.summary("User Info GET endpoint")
+            .addTagsItem("OIDC")
+            .operationId("userInfo")
         },
         OIDCController::userInfoRequest
       ), OIDCAuthorizationRole.ACCESS_TOKEN)
@@ -112,6 +120,6 @@ object OIDCController {
     if(!verificationResult.isValid) throw BadRequestResponse("Session could not be verified")
     val vp_token = verificationResult.vp_token ?: throw BadRequestResponse("No vp_token found for session")
 
-    ctx.json(vp_token.toMap())
+    ctx.json(OIDCManager.getUserInfo(session).toJSONObject())
   }
 }

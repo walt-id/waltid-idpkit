@@ -12,6 +12,7 @@ import com.nimbusds.oauth2.sdk.id.Issuer
 import com.nimbusds.oauth2.sdk.token.*
 import com.nimbusds.openid.connect.sdk.OIDCScopeValue
 import com.nimbusds.openid.connect.sdk.SubjectType
+import com.nimbusds.openid.connect.sdk.claims.UserInfo
 import com.nimbusds.openid.connect.sdk.op.OIDCProviderMetadata
 import id.walt.idp.IDPManager
 import id.walt.idp.IDPType
@@ -68,7 +69,9 @@ object OIDCManager : IDPManager {
       authRequest = authRequest,
       vpTokenClaim = vpTokenClaim,
       wallet = wallet
-    )
+    ).also {
+      sessionCache.put(it.id, it)
+    }
   }
 
   fun getOIDCSession(id: String): OIDCSession? {
@@ -120,6 +123,15 @@ object OIDCManager : IDPManager {
     val session = sessionCache.getIfPresent(decodedJWT.subject) ?: throw JWTDecodeException("Invalid oidc session id")
     if(!decodedJWT.audience.contains(session.authRequest.redirectionURI.toString())) throw JWTDecodeException("Invalid audience for session")
     return session
+  }
+
+  fun getUserInfo(session: OIDCSession): UserInfo {
+    val verificationResult = session.verificationResult ?: throw BadRequestResponse("SIOP request not yet verified")
+    if(verificationResult.vp_token == null) throw BadRequestResponse("No vp_token received from SIOP response")
+
+    return UserInfo(
+      JWTClaimsSet.Builder().subject(verificationResult.subject).claim("vp_token", verificationResult.vp_token!!.encode()).build()
+    )
   }
 
   private fun errorDescriptionFor(verificationResult: SIOPResponseVerificationResult): String {
