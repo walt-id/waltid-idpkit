@@ -76,6 +76,7 @@ class OIDCTest: AnnotationSpec() {
           InputDescriptor(schema = VpSchema(uri = VcTemplateManager.loadTemplate("VerifiableId").credentialSchema!!.id))
         )))
     ).toJSONString())
+      .customParameter("walletId", targetWallet.id)
       .state(State("TEST"))
       .redirectionURI(APP_REDIRECT)
       .build()).toHTTPRequest().send()
