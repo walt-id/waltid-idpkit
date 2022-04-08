@@ -4,12 +4,12 @@ import com.nimbusds.oauth2.sdk.*
 import com.nimbusds.oauth2.sdk.id.ClientID
 import com.nimbusds.oauth2.sdk.id.Issuer
 import com.nimbusds.oauth2.sdk.id.State
-import com.nimbusds.openid.connect.sdk.OIDCTokenResponse
-import com.nimbusds.openid.connect.sdk.UserInfoRequest
-import com.nimbusds.openid.connect.sdk.UserInfoResponse
+import com.nimbusds.openid.connect.sdk.*
+import com.nimbusds.openid.connect.sdk.claims.IDTokenClaimsSet
 import com.nimbusds.openid.connect.sdk.op.OIDCProviderMetadata
 import id.walt.custodian.Custodian
 import id.walt.idp.config.IDPConfig
+import id.walt.idp.oidc.OIDCManager
 import id.walt.idp.rest.IDPRestAPI
 import id.walt.model.DidMethod
 import id.walt.model.dif.InputDescriptor
@@ -30,12 +30,15 @@ import id.walt.vclib.credentials.VerifiablePresentation
 import id.walt.vclib.model.toCredential
 import id.walt.vclib.templates.VcTemplateManager
 import id.walt.verifier.backend.VerifierConfig
+import id.walt.verifier.backend.WalletConfiguration
 import id.walt.webwallet.backend.config.WalletConfig
 import io.javalin.http.HttpCode
 import io.kotest.assertions.json.shouldMatchJson
 import io.kotest.assertions.throwables.shouldNotThrowAny
 import io.kotest.core.spec.style.AnnotationSpec
 import io.kotest.matchers.collections.shouldContain
+import io.kotest.matchers.maps.shouldContainKey
+import io.kotest.matchers.maps.shouldNotContainKey
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
 import io.kotest.matchers.string.shouldContain
@@ -48,6 +51,7 @@ class OIDCTest: AnnotationSpec() {
   val OIDC_URI = URI.create("http://localhost:8080/api/oidc")
   lateinit var DID: String
   lateinit var VC: String
+  lateinit var VP: String
   val APP_REDIRECT = URI.create("http://app")
 
   @BeforeClass
@@ -62,25 +66,12 @@ class OIDCTest: AnnotationSpec() {
     IDPRestAPI.start()
   }
 
-  @Test
-  fun testGetVpToken() {
-    val targetWallet = VerifierConfig.config.wallets.values.first()
-    // APP: get oidc discovery document
-    val metadata = shouldNotThrowAny { OIDCProviderMetadata.resolve(Issuer(OIDC_URI)) }
-    metadata.claims shouldContain "vp_token"
+  fun simulateAuthReqToAppRedirect(authReq: AuthorizationRequest, targetWallet: WalletConfiguration, oidcMeta: OIDCProviderMetadata): URI {
+
+    oidcMeta.claims shouldContain "vp_token"
 
     // APP: init oidc session (par request)
-    val parHTTPResponse = PushedAuthorizationRequest(metadata.pushedAuthorizationRequestEndpointURI, AuthorizationRequest.Builder(ResponseType.CODE, ClientID())
-      .customParameter("claims", VCClaims(
-      vp_token = VpTokenClaim(PresentationDefinition( "1",
-        listOf(
-          InputDescriptor(schema = VCSchema(uri = VcTemplateManager.loadTemplate("VerifiableId").credentialSchema!!.id))
-        )))
-    ).toJSONString())
-      .customParameter("walletId", targetWallet.id)
-      .state(State("TEST"))
-      .redirectionURI(APP_REDIRECT)
-      .build()).toHTTPRequest().send()
+    val parHTTPResponse = PushedAuthorizationRequest(oidcMeta.pushedAuthorizationRequestEndpointURI, authReq).toHTTPRequest().send()
 
     parHTTPResponse.statusCode shouldBe HttpCode.CREATED.status
 
@@ -88,10 +79,10 @@ class OIDCTest: AnnotationSpec() {
 
     // APP: redirect to authorization endpoint on IDP
     val authHttpResponse = AuthorizationRequest.Builder(parResponse.toSuccessResponse().requestURI, ClientID())
-      .endpointURI(metadata.authorizationEndpointURI)
+      .endpointURI(oidcMeta.authorizationEndpointURI)
       .build().toHTTPRequest().apply {
-      followRedirects = false
-    }.send()
+        followRedirects = false
+      }.send()
 
     // IDP: redirects to WALLET
     authHttpResponse.statusCode shouldBe HttpCode.FOUND.status
@@ -119,6 +110,29 @@ class OIDCTest: AnnotationSpec() {
 
     // IDP: redirects to APP with authorization code
     val redirectToAPP = URI.create(vpSvc.postSIOPResponse(siopReq, siopResponse))
+    return redirectToAPP
+  }
+
+  @Test
+  fun testGetVpTokenCodeFlow() {
+    val targetWallet = VerifierConfig.config.wallets.values.first()
+    // APP: get oidc discovery document
+    val metadata = shouldNotThrowAny { OIDCProviderMetadata.resolve(Issuer(OIDC_URI)) }
+    // APP: init oidc session (par request)
+    val authReq = AuthorizationRequest.Builder(ResponseType.CODE, ClientID())
+      .customParameter("claims", VCClaims(
+      vp_token = VpTokenClaim(PresentationDefinition( "1",
+        listOf(
+          InputDescriptor(schema = VCSchema(uri = VcTemplateManager.loadTemplate("VerifiableId").credentialSchema!!.id))
+        )))
+    ).toJSONString())
+      .customParameter("walletId", targetWallet.id)
+      .state(State("TEST"))
+      .redirectionURI(APP_REDIRECT)
+      .build()
+
+    // IDP: redirects to APP with authorization code
+    val redirectToAPP = simulateAuthReqToAppRedirect(authReq, targetWallet, metadata)
     redirectToAPP.query shouldContain "state=TEST"
     redirectToAPP.query shouldContain "code="
 
@@ -131,6 +145,8 @@ class OIDCTest: AnnotationSpec() {
     val tokenResponse = OIDCTokenResponse.parse(tokenHttpResponse)
 
     tokenResponse.indicatesSuccess() shouldBe true
+    tokenResponse.oidcTokens.idToken.jwtClaimsSet.claims shouldNotContainKey  "vp_token"
+    tokenResponse.oidcTokens.idToken.jwtClaimsSet.subject shouldBe DID
 
     // APP: get userInfo
     val userInfoHttpResponse = UserInfoRequest(metadata.userInfoEndpointURI, tokenResponse.toSuccessResponse().tokens.accessToken).toHTTPRequest().send()
@@ -141,6 +157,33 @@ class OIDCTest: AnnotationSpec() {
 
     val vp_token = userInfoResponse.toSuccessResponse().userInfo.getStringClaim("vp_token")
     vp_token shouldNotBe null
-    vp_token shouldMatchJson presentation.encode()
   }
+
+  @Test
+  fun testGetVpTokenInIdToken() {
+    val targetWallet = VerifierConfig.config.wallets.values.first()
+    // APP: get oidc discovery document
+    val metadata = shouldNotThrowAny { OIDCProviderMetadata.resolve(Issuer(OIDC_URI)) }
+    // APP: init oidc session (par request)
+    val authReq = AuthorizationRequest.Builder(ResponseType.IDTOKEN, ClientID())
+      .customParameter("claims", VCClaims(
+        vp_token = VpTokenClaim(PresentationDefinition( "1",
+          listOf(
+            InputDescriptor(schema = VCSchema(uri = VcTemplateManager.loadTemplate("VerifiableId").credentialSchema!!.id))
+          )))
+      ).toJSONString())
+      .customParameter("walletId", targetWallet.id)
+      .state(State("TEST"))
+      .redirectionURI(APP_REDIRECT)
+      .build()
+
+    // IDP: redirects to APP with authorization code
+    val redirectToAPP = simulateAuthReqToAppRedirect(authReq, targetWallet, metadata)
+    redirectToAPP.fragment shouldNotBe null
+    redirectToAPP.fragment shouldContain "id_token="
+    val authResp = AuthenticationResponseParser.parse(redirectToAPP)
+    authResp.toSuccessResponse().idToken.jwtClaimsSet.subject shouldBe DID
+    authResp.toSuccessResponse().idToken.jwtClaimsSet.claims shouldContainKey "vp_token"
+  }
+
 }

@@ -67,7 +67,7 @@ object OIDCManager : IDPManager {
     val vpTokenClaim = OIDCUtils.getVCClaims(authRequest).vp_token ?: throw BadRequestResponse("Missing VP token claim in authorization request")
     val walletId = authRequest.customParameters["walletId"]?.firstOrNull() ?: VerifierConfig.config.wallets.values.map { wc -> wc.id }.firstOrNull() ?: throw InternalServerErrorResponse("Known wallets not configured")
     val wallet = VerifierConfig.config.wallets[walletId] ?: throw BadRequestResponse("No wallet configuration found for given walletId")
-    if(authRequest.responseType != ResponseType.CODE) throw BadRequestResponse("Only code flow is currently supported")
+
     return OIDCSession(
       id = UUID.randomUUID().toString(),
       authRequest = authRequest,
