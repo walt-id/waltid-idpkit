@@ -6,14 +6,18 @@ import com.auth0.jwt.algorithms.Algorithm
 import com.auth0.jwt.exceptions.JWTDecodeException
 import com.auth0.jwt.interfaces.DecodedJWT
 import com.google.common.cache.CacheBuilder
+import com.nimbusds.jose.shaded.json.parser.JSONParser
 import com.nimbusds.jwt.JWTClaimsSet
 import com.nimbusds.oauth2.sdk.*
 import com.nimbusds.oauth2.sdk.id.Issuer
 import com.nimbusds.oauth2.sdk.token.*
-import com.nimbusds.openid.connect.sdk.OIDCScopeValue
-import com.nimbusds.openid.connect.sdk.SubjectType
+import com.nimbusds.openid.connect.sdk.*
+import com.nimbusds.openid.connect.sdk.claims.ClaimsSet
+import com.nimbusds.openid.connect.sdk.claims.ClaimsSetRequest
+import com.nimbusds.openid.connect.sdk.claims.IDTokenClaimsSet
 import com.nimbusds.openid.connect.sdk.claims.UserInfo
 import com.nimbusds.openid.connect.sdk.op.OIDCProviderMetadata
+import com.nimbusds.openid.connect.sdk.token.OIDCTokens
 import id.walt.idp.IDPManager
 import id.walt.idp.IDPType
 import id.walt.idp.config.IDPConfig
@@ -93,17 +97,26 @@ object OIDCManager : IDPManager {
     return URI.create("${session.wallet.url}/${session.wallet.presentPath}?${siopReq.toUriQueryString()}")
   }
 
-  fun getAccessTokenFor(code: String, redirect_uri: String): AccessTokenResponse {
+  fun getIdTokenFor(session: OIDCSession): String {
+    return idTokenProvider.generateToken(session)
+  }
+
+  fun getAccessTokenFor(session: OIDCSession): AccessToken {
+    return BearerAccessToken(
+      accessTokenProvider.generateToken(session),
+      EXPIRATION_TIME.seconds,
+      Scope(OIDCScopeValue.OPENID)
+    )
+  }
+
+  fun getTokensFor(code: String, redirect_uri: String): OIDCTokenResponse {
     val session = getOIDCSession(code) ?: throw BadRequestResponse("Invalid authorization code")
     if(!session.authRequest.redirectionURI.equals(URI.create(redirect_uri)))
       throw ForbiddenResponse("Redirection URI doesn't match OIDC session for given code")
-    return AccessTokenResponse(
-      Tokens(
-        BearerAccessToken(
-          accessTokenProvider.generateToken(session),
-          EXPIRATION_TIME.seconds,
-          Scope(OIDCScopeValue.OPENID)
-        ),
+    return OIDCTokenResponse(
+      OIDCTokens(
+        getIdTokenFor(session),
+        getAccessTokenFor(session),
         RefreshToken()
       )
     )
@@ -115,6 +128,33 @@ object OIDCManager : IDPManager {
     jwtAlgorithm,
     { session: OIDCSession, alg: Algorithm? ->
       JWT.create().withSubject(session.id).withAudience(session.authRequest.redirectionURI.toString()).sign(alg)
+    },
+    JWT.require(jwtAlgorithm).build()
+  )
+
+  val idTokenProvider = JWTProvider(
+    jwtAlgorithm,
+    { session: OIDCSession, alg: Algorithm? ->
+      JWT.create()
+        .withSubject(session.verificationResult!!.subject)
+        .withIssuer(IDPConfig.config.externalUrl)
+        .withIssuedAt(Date())
+        .apply {
+          if(session.authRequest.responseType == ResponseType.IDTOKEN) {
+            // add full user info to id_token, if implicit flow, with id_token only
+            withPayload(getUserInfo(session).toJSONObject())
+          } else if(session.authRequest.customParameters.containsKey("claims")) {
+            session.authRequest.customParameters["claims"]?.firstOrNull()?.let {
+              OIDCClaimsRequest.parse(it)
+            }?.let { claims ->
+              claims.idTokenClaimsRequest?.getClaimNames(false)?.let { idTokenClaims ->
+                val userInfo = getUserInfo(session).toJSONObject()
+                withPayload(userInfo.filterKeys { k -> idTokenClaims.contains(k) })
+              }
+            }
+          }
+        }
+        .sign(alg)
     },
     JWT.require(jwtAlgorithm).build()
   )
@@ -143,19 +183,41 @@ object OIDCManager : IDPManager {
     return "Invalid SIOP response verification result"
   }
 
+  private fun generateAuthSuccessResponseFor(session: OIDCSession): String {
+    return session.authRequest.responseType.map { rt ->
+      when(rt) {
+        ResponseType.Value.CODE -> "code=${session.id}"
+        OIDCResponseTypeValue.ID_TOKEN -> "id_token=${getIdTokenFor(session)}"
+        ResponseType.Value.TOKEN -> "access_token=${getAccessTokenFor(session).value}"
+        else -> throw BadRequestResponse("Unsupported response_type: ${rt.value}")
+      }
+    }.joinToString("&", postfix = "&state=${session.authRequest.state}")
+  }
+
+  private fun fragmentOrQuery(session: OIDCSession) =
+    when(session.authRequest.impliedResponseMode()) {
+      ResponseMode.FRAGMENT -> "#"
+      else -> "?"
+    }
+
   override fun continueIDPSessionForSIOPResponse(sessionId: String, verificationResult: SIOPResponseVerificationResult): URI {
     val session = getOIDCSession(sessionId) ?: throw BadRequestResponse("OIDC session invalid or expired")
     if(verificationResult.isValid) {
       session.verificationResult = verificationResult
       updateOIDCSession(session)
-      return URI.create("${session.authRequest.redirectionURI}" +
-          "?code=${sessionId}" +
-          "&state=${session.authRequest.state}")
+      return URI.create(
+        "${session.authRequest.redirectionURI}" +
+        fragmentOrQuery(session) +
+        generateAuthSuccessResponseFor(session)
+      )
     } else {
-      return URI.create("${session.authRequest.redirectionURI}" +
-          "?error=invalid_request" +
-          "&error_description=${URLEncoder.encode(errorDescriptionFor(verificationResult), StandardCharsets.UTF_8)}" +
-          "&state=${session.authRequest.state}")
+      return URI.create(
+        "${session.authRequest.redirectionURI}" +
+        fragmentOrQuery(session) +
+        "error=invalid_request" +
+        "&error_description=${URLEncoder.encode(errorDescriptionFor(verificationResult), StandardCharsets.UTF_8)}" +
+        "&state=${session.authRequest.state}"
+      )
     }
   }
 

@@ -27,7 +27,7 @@ class SIOPManager: VerifierManager() {
     return super.getVerififactionPoliciesFor(req)
   }
 
-  override fun getVerificationRedirectionUri(verificationResult: SIOPResponseVerificationResult): URI {
+  override fun getVerificationRedirectionUri(verificationResult: SIOPResponseVerificationResult, uiUrl: String?): URI {
     val siopState = SIOPState.decode(verificationResult.state) ?: throw BadRequestResponse("Invalid state")
     return IDPFactory.getIDP(siopState.idpType).continueIDPSessionForSIOPResponse(siopState.idpSessionId, verificationResult)
   }

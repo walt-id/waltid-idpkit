@@ -28,7 +28,7 @@ dependencies {
     implementation("com.github.ajalt.clikt:clikt-jvm:3.4.0")
     implementation("com.github.ajalt.clikt:clikt:3.4.0")
     // SSIKIT
-    implementation("id.walt:waltid-ssi-kit:1.7-SNAPSHOT")
+    implementation("id.walt:waltid-ssi-kit:1.8.0-SNAPSHOT")
     implementation("id.walt:waltid-ssikit-vclib:1.15.0")
     implementation("id.walt:waltid-wallet-backend:1.0-SNAPSHOT")
 

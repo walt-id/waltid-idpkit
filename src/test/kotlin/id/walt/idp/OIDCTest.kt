@@ -4,6 +4,7 @@ import com.nimbusds.oauth2.sdk.*
 import com.nimbusds.oauth2.sdk.id.ClientID
 import com.nimbusds.oauth2.sdk.id.Issuer
 import com.nimbusds.oauth2.sdk.id.State
+import com.nimbusds.openid.connect.sdk.OIDCTokenResponse
 import com.nimbusds.openid.connect.sdk.UserInfoRequest
 import com.nimbusds.openid.connect.sdk.UserInfoResponse
 import com.nimbusds.openid.connect.sdk.op.OIDCProviderMetadata
@@ -13,7 +14,7 @@ import id.walt.idp.rest.IDPRestAPI
 import id.walt.model.DidMethod
 import id.walt.model.dif.InputDescriptor
 import id.walt.model.dif.PresentationDefinition
-import id.walt.model.dif.VpSchema
+import id.walt.model.dif.VCSchema
 import id.walt.model.oidc.OIDCProvider
 import id.walt.model.oidc.SIOPv2Request
 import id.walt.model.oidc.VCClaims
@@ -71,9 +72,9 @@ class OIDCTest: AnnotationSpec() {
     // APP: init oidc session (par request)
     val parHTTPResponse = PushedAuthorizationRequest(metadata.pushedAuthorizationRequestEndpointURI, AuthorizationRequest.Builder(ResponseType.CODE, ClientID())
       .customParameter("claims", VCClaims(
-      vp_token = VpTokenClaim(PresentationDefinition(
+      vp_token = VpTokenClaim(PresentationDefinition( "1",
         listOf(
-          InputDescriptor(schema = VpSchema(uri = VcTemplateManager.loadTemplate("VerifiableId").credentialSchema!!.id))
+          InputDescriptor(schema = VCSchema(uri = VcTemplateManager.loadTemplate("VerifiableId").credentialSchema!!.id))
         )))
     ).toJSONString())
       .customParameter("walletId", targetWallet.id)
@@ -102,7 +103,7 @@ class OIDCTest: AnnotationSpec() {
     val vcClaims = OIDCUtils.getVCClaims(authReq)
     vcClaims.vp_token shouldNotBe null
     vcClaims.vp_token!!.presentation_definition shouldNotBe null
-    vcClaims.vp_token!!.presentation_definition.input_descriptors.map { id -> id.schema.uri } shouldContain VcTemplateManager.loadTemplate("VerifiableId").credentialSchema!!.id
+    vcClaims.vp_token!!.presentation_definition.input_descriptors.map { id -> id.schema!!.uri } shouldContain VcTemplateManager.loadTemplate("VerifiableId").credentialSchema!!.id
 
     // WALLET: fulfill SIOP request on IDP
     val siopReq = SIOPv2Request(
@@ -127,7 +128,7 @@ class OIDCTest: AnnotationSpec() {
 
     // APP: get access token
     val tokenHttpResponse = TokenRequest(metadata.tokenEndpointURI, ClientID(), AuthorizationCodeGrant(AuthorizationCode(code), APP_REDIRECT)).toHTTPRequest().send()
-    val tokenResponse = TokenResponse.parse(tokenHttpResponse)
+    val tokenResponse = OIDCTokenResponse.parse(tokenHttpResponse)
 
     tokenResponse.indicatesSuccess() shouldBe true
 

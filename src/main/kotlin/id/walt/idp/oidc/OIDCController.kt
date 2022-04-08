@@ -108,7 +108,7 @@ object OIDCController {
     val code = ctx.formParam("code") ?: throw BadRequestResponse("No authorization code specified")
     val redirect_uri = ctx.formParam("redirect_uri") ?: throw BadRequestResponse("No redirect_uri specified")
     ctx.json(
-      OIDCManager.getAccessTokenFor(code, redirect_uri).toJSONObject()
+      OIDCManager.getTokensFor(code, redirect_uri).toJSONObject()
     )
   }
 
