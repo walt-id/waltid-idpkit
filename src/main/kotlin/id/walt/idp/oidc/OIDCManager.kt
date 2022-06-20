@@ -22,6 +22,7 @@ import id.walt.idp.IDPManager
 import id.walt.idp.IDPType
 import id.walt.idp.config.IDPConfig
 import id.walt.idp.siop.SIOPState
+import id.walt.model.oidc.VpTokenClaim
 import id.walt.services.jwt.JwtService
 import id.walt.services.oidc.OIDCUtils
 import id.walt.verifier.backend.SIOPResponseVerificationResult
@@ -61,6 +62,20 @@ object OIDCManager : IDPManager {
         "description" to wallet.description
       )
     })
+  }
+
+  fun getVCCandidatesForScope(scope: Scope.Value): Set<String> {
+    return when(scope) {
+      OIDCScopeValue.PROFILE -> setOf("VerifiableId")
+      OIDCScopeValue.ADDRESS -> setOf("VerifiableId")
+      OIDCScopeValue.EMAIL -> setOf() // TODO: which credential contains email?
+      OIDCScopeValue.PHONE -> setOf() // TODO: which credential contains phone?
+      else -> setOf()
+    }
+  }
+
+  fun generateVpTokenClaim(authRequest: AuthorizationRequest): VpTokenClaim? {
+    return OIDCUtils.getVCClaims(authRequest).vp_token
   }
 
   fun initOIDCSession(authRequest: AuthorizationRequest): OIDCSession {
