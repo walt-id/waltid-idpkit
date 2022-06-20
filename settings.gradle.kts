@@ -1,2 +1,2 @@
-rootProject.name = "waltid-identity-provider"
+rootProject.name = "waltid-idpkit"
 

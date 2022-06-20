@@ -1,5 +1,5 @@
-# waltid-identity-provider
-SSI Identity provider, supporting OIDC
+# waltid-idpkit
+SSI Identity provider kit, supporting OIDC
 
 # OIDC code flow
 
