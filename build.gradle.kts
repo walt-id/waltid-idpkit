@@ -28,9 +28,9 @@ dependencies {
     implementation("com.github.ajalt.clikt:clikt-jvm:3.4.0")
     implementation("com.github.ajalt.clikt:clikt:3.4.0")
     // SSIKIT
-    implementation("id.walt:waltid-ssi-kit:1.8.0-SNAPSHOT")
-    implementation("id.walt:waltid-ssikit-vclib:1.15.0")
-    implementation("id.walt:waltid-wallet-backend:1.0-SNAPSHOT")
+    implementation("id.walt:waltid-ssi-kit:1.11.0-SNAPSHOT")
+    implementation("id.walt:waltid-ssikit-vclib:1.22.0")
+    implementation("id.walt:waltid-walletkit:1.0-SNAPSHOT")
 
     // Service-Matrix
     implementation("id.walt.servicematrix:WaltID-ServiceMatrix:1.1.0")
@@ -40,6 +40,9 @@ dependencies {
     implementation("org.slf4j:slf4j-simple:2.0.0-alpha6")
     implementation("io.github.microutils:kotlin-logging-jvm:2.1.21")
 
+    //JSON
+    implementation("com.jayway.jsonpath:json-path:2.7.0")
+
     // Testing
     //testImplementation(kotlin("test-junit"))
     testImplementation("io.mockk:mockk:1.12.2")
@@ -48,12 +51,6 @@ dependencies {
     testImplementation("io.kotest:kotest-assertions-core:5.1.0")
     testImplementation("io.kotest:kotest-assertions-json:5.1.0")
 
-    // HTTP
-    testImplementation("io.ktor:ktor-client-core:1.6.7")
-    testImplementation("io.ktor:ktor-client-cio:1.6.7")
-    testImplementation("io.ktor:ktor-client-serialization:1.6.7")
-    testImplementation("io.ktor:ktor-client-logging:1.6.7")
-    testImplementation("io.ktor:ktor-client-jackson:1.6.7")
 }
 
 

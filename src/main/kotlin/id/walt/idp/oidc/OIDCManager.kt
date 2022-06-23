@@ -1,20 +1,16 @@
 package id.walt.idp.oidc
 
 import com.auth0.jwt.JWT
-import com.auth0.jwt.JWTVerifier
 import com.auth0.jwt.algorithms.Algorithm
 import com.auth0.jwt.exceptions.JWTDecodeException
 import com.auth0.jwt.interfaces.DecodedJWT
 import com.google.common.cache.CacheBuilder
-import com.nimbusds.jose.shaded.json.parser.JSONParser
+import com.jayway.jsonpath.JsonPath
 import com.nimbusds.jwt.JWTClaimsSet
 import com.nimbusds.oauth2.sdk.*
 import com.nimbusds.oauth2.sdk.id.Issuer
 import com.nimbusds.oauth2.sdk.token.*
 import com.nimbusds.openid.connect.sdk.*
-import com.nimbusds.openid.connect.sdk.claims.ClaimsSet
-import com.nimbusds.openid.connect.sdk.claims.ClaimsSetRequest
-import com.nimbusds.openid.connect.sdk.claims.IDTokenClaimsSet
 import com.nimbusds.openid.connect.sdk.claims.UserInfo
 import com.nimbusds.openid.connect.sdk.op.OIDCProviderMetadata
 import com.nimbusds.openid.connect.sdk.token.OIDCTokens
@@ -22,8 +18,8 @@ import id.walt.idp.IDPManager
 import id.walt.idp.IDPType
 import id.walt.idp.config.IDPConfig
 import id.walt.idp.siop.SIOPState
+import id.walt.model.dif.*
 import id.walt.model.oidc.VpTokenClaim
-import id.walt.services.jwt.JwtService
 import id.walt.services.oidc.OIDCUtils
 import id.walt.verifier.backend.SIOPResponseVerificationResult
 import id.walt.verifier.backend.VerifierConfig
@@ -55,7 +51,8 @@ object OIDCManager : IDPManager {
     userInfoEndpointURI = URI.create("$oidcApiUrl/userInfo")
     grantTypes = listOf(GrantType.AUTHORIZATION_CODE)
     responseTypes = listOf(ResponseType.CODE)
-    claims = listOf("vp_token")
+    claims = listOf("vp_token", *(IDPConfig.config.claimMappings?.mappings?.map { m -> m.claim }?.toSet() ?: setOf()).toTypedArray())
+    scopes = Scope("openid", *(IDPConfig.config.claimMappings?.mappings?.flatMap { m -> m.scope }?.toSet() ?: setOf()).toTypedArray())
     setCustomParameter("wallets_supported", VerifierConfig.config.wallets.values.map { wallet ->
       mapOf(
         "id" to wallet.id,
@@ -64,22 +61,20 @@ object OIDCManager : IDPManager {
     })
   }
 
-  fun getVCCandidatesForScope(scope: Scope.Value): Set<String> {
-    return when(scope) {
-      OIDCScopeValue.PROFILE -> setOf("VerifiableId")
-      OIDCScopeValue.ADDRESS -> setOf("VerifiableId")
-      OIDCScopeValue.EMAIL -> setOf() // TODO: which credential contains email?
-      OIDCScopeValue.PHONE -> setOf() // TODO: which credential contains phone?
-      else -> setOf()
-    }
-  }
-
-  fun generateVpTokenClaim(authRequest: AuthorizationRequest): VpTokenClaim? {
-    return OIDCUtils.getVCClaims(authRequest).vp_token
+  fun generateVpTokenClaim(authRequest: AuthorizationRequest): VpTokenClaim {
+    return OIDCUtils.getVCClaims(authRequest).vp_token ?:
+      VpTokenClaim(PresentationDefinition(
+        id = "1",
+        input_descriptors = authRequest.scope.flatMap { s -> IDPConfig.config.claimMappings?.credentialTypesForScope(s) ?: setOf() }.toSet().mapIndexed {
+          index, s -> InputDescriptor(index.toString(), constraints = InputDescriptorConstraints(
+            fields = listOf(InputDescriptorField(listOf("$.type"), "1", null, mapOf("const" to s)))
+          ), group = setOf("A"))
+        }, submission_requirements = listOf(SubmissionRequirement(SubmissionRequirementRule.all, from = "A"))
+      ))
   }
 
   fun initOIDCSession(authRequest: AuthorizationRequest): OIDCSession {
-    val vpTokenClaim = OIDCUtils.getVCClaims(authRequest).vp_token ?: throw BadRequestResponse("Missing VP token claim in authorization request")
+    val vpTokenClaim = generateVpTokenClaim(authRequest)
     val walletId = authRequest.customParameters["walletId"]?.firstOrNull() ?: VerifierConfig.config.wallets.values.map { wc -> wc.id }.firstOrNull() ?: throw InternalServerErrorResponse("Known wallets not configured")
     val wallet = VerifierConfig.config.wallets[walletId] ?: throw BadRequestResponse("No wallet configuration found for given walletId")
 
@@ -180,12 +175,31 @@ object OIDCManager : IDPManager {
     return session
   }
 
+  fun populateUserInfoClaims(claimBuilder: JWTClaimsSet.Builder, session: OIDCSession) {
+    if(session.verificationResult?.vp_token == null) throw BadRequestResponse("No vp_token received from SIOP response")
+
+    // populate vp_token claim, if specifically requested in auth request
+    if(OIDCUtils.getVCClaims(session.authRequest).vp_token != null) {
+      claimBuilder.claim("vp_token", session.verificationResult!!.vp_token!!.encode())
+    }
+
+    // populate claims based on OIDC Scope, and/or claims requested in auth request
+    (session.authRequest.scope?.flatMap { s -> IDPConfig.config.claimMappings?.mappingsForScope(s) ?: listOf() } ?: listOf())
+      .plus(session.authRequest.customParameters["claims"]?.flatMap { c -> IDPConfig.config.claimMappings?.mappingsForClaim(c) ?: listOf() } ?: listOf())
+      .toSet().forEach { m ->
+        val credential = session.verificationResult!!.vp_token!!.verifiableCredential.firstOrNull{ c -> c.type.contains(m.credentialType) } ?: throw BadRequestResponse("vp_token from SIOP resposne doesn't contain required credentials")
+        val jp = JsonPath.parse(credential.json)
+        val value = m.valuePath.split(" ").map { jp.read<Any>(it) }.joinToString(" ")
+        claimBuilder.claim(m.claim, value)
+      }
+  }
+
   fun getUserInfo(session: OIDCSession): UserInfo {
     val verificationResult = session.verificationResult ?: throw BadRequestResponse("SIOP request not yet verified")
-    if(verificationResult.vp_token == null) throw BadRequestResponse("No vp_token received from SIOP response")
-
+    val claimBuilder = JWTClaimsSet.Builder().subject(verificationResult.subject)
+    populateUserInfoClaims(claimBuilder, session)
     return UserInfo(
-      JWTClaimsSet.Builder().subject(verificationResult.subject).claim("vp_token", verificationResult.vp_token!!.encode()).build()
+      claimBuilder.build()
     )
   }
 

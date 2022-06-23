@@ -1,3 +1,43 @@
 {
-  "externalUrl": "http://localhost:6000"
+  "externalUrl": "http://localhost:6000",
+  "claimMappings": {
+    "mappings": [
+      {
+        "scope": [ "profile" ],
+        "claim": "name",
+        "credentialType": "VerifiableId",
+        "valuePath": "$.credentialSubject.firstName $.credentialSubject.familyName"
+      },
+      {
+        "scope": [ "profile" ],
+        "claim": "family_name",
+        "credentialType": "VerifiableId",
+        "valuePath": "$.credentialSubject.familyName"
+      },
+      {
+        "scope": [ "profile" ],
+        "claim": "given_name",
+        "credentialType": "VerifiableId",
+        "valuePath": "$.credentialSubject.firstName"
+      },
+      {
+        "scope": [ "profile" ],
+        "claim": "gender",
+        "credentialType": "VerifiableId",
+        "valuePath": "$.credentialSubject.gender"
+      },
+      {
+        "scope": [ "profile" ],
+        "claim": "birthdate",
+        "credentialType": "VerifiableId",
+        "valuePath": "$.credentialSubject.dateOfBirth"
+      },
+      {
+        "scope": [ "address" ],
+        "claim": "address",
+        "credentialType": "VerifiableId",
+        "valuePath": "$.credentialSubject.currentAddress[0]"
+      }
+    ]
+  }
 }
