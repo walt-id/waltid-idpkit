@@ -6,6 +6,8 @@ import com.auth0.jwt.exceptions.JWTDecodeException
 import com.auth0.jwt.interfaces.DecodedJWT
 import com.google.common.cache.CacheBuilder
 import com.jayway.jsonpath.JsonPath
+import com.nimbusds.jose.jwk.JWK
+import com.nimbusds.jose.jwk.JWKSet
 import com.nimbusds.jwt.JWTClaimsSet
 import com.nimbusds.oauth2.sdk.*
 import com.nimbusds.oauth2.sdk.id.Issuer
@@ -14,20 +16,34 @@ import com.nimbusds.openid.connect.sdk.*
 import com.nimbusds.openid.connect.sdk.claims.UserInfo
 import com.nimbusds.openid.connect.sdk.op.OIDCProviderMetadata
 import com.nimbusds.openid.connect.sdk.token.OIDCTokens
+import id.walt.WALTID_DATA_ROOT
+import id.walt.crypto.KeyAlgorithm
+import id.walt.crypto.KeyId
 import id.walt.idp.IDPManager
 import id.walt.idp.IDPType
+import id.walt.idp.util.WaltIdAlgorithm
 import id.walt.idp.config.IDPConfig
 import id.walt.idp.siop.SIOPState
 import id.walt.model.dif.*
 import id.walt.model.oidc.VpTokenClaim
+import id.walt.services.hkvstore.FileSystemHKVStore
+import id.walt.services.hkvstore.FilesystemStoreConfig
+import id.walt.services.key.KeyFormat
+import id.walt.services.key.KeyService
+import id.walt.services.keystore.HKVKeyStoreService
+import id.walt.services.keystore.KeyType
 import id.walt.services.oidc.OIDCUtils
+import id.walt.services.vcstore.HKVVcStoreService
 import id.walt.verifier.backend.SIOPResponseVerificationResult
 import id.walt.verifier.backend.VerifierConfig
 import id.walt.verifier.backend.VerifierManager
+import id.walt.webwallet.backend.context.UserContext
+import id.walt.webwallet.backend.context.WalletContextManager
 import io.javalin.http.BadRequestResponse
 import io.javalin.http.ForbiddenResponse
 import io.javalin.http.InternalServerErrorResponse
 import javalinjwt.JWTProvider
+import mu.KotlinLogging
 import java.net.URI
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
@@ -38,6 +54,33 @@ import java.util.concurrent.TimeUnit
 object OIDCManager : IDPManager {
   val EXPIRATION_TIME: Duration = Duration.ofMinutes(5)
   val sessionCache = CacheBuilder.newBuilder().expireAfterAccess(EXPIRATION_TIME.seconds, TimeUnit.SECONDS).build<String, OIDCSession>()
+  val log = KotlinLogging.logger {}
+
+  val oidcContext = UserContext(
+    contextId = "OIDCContext",
+    hkvStore = FileSystemHKVStore(FilesystemStoreConfig("$WALTID_DATA_ROOT/data/idp")),
+    keyStore = HKVKeyStoreService(),
+    vcStore = HKVVcStoreService()
+  )
+
+  lateinit var keyId: KeyId
+  lateinit var jwtAlgorithm: Algorithm
+  lateinit var keySet: JWKSet
+
+  init {
+    WalletContextManager.runWith(oidcContext) {
+      if(!IDPConfig.config.keyId.isNullOrEmpty()) {
+        keyId = KeyId(IDPConfig.config.keyId)
+      } else {
+        keyId = KeyService.getService().listKeys().map { k -> k.keyId }.firstOrNull()
+          ?: KeyService.getService().generate(KeyAlgorithm.RSA)
+      }
+      val key = KeyService.getService().load(keyId.id)
+      keySet = JWKSet(JWK.parse(KeyService.getService().export(keyId.id, KeyFormat.JWK, KeyType.PUBLIC)))
+      jwtAlgorithm = WaltIdAlgorithm(keyId, oidcContext, key.algorithm)
+      log.info("Using IDP key: {}", keyId)
+    }
+  }
 
   val oidcProviderMetadata get() = OIDCProviderMetadata(
     Issuer(oidcApiUrl),
@@ -50,7 +93,7 @@ object OIDCManager : IDPManager {
     tokenEndpointURI = URI.create("$oidcApiUrl/token")
     userInfoEndpointURI = URI.create("$oidcApiUrl/userInfo")
     grantTypes = listOf(GrantType.AUTHORIZATION_CODE)
-    responseTypes = listOf(ResponseType.CODE)
+    responseTypes = listOf(ResponseType.CODE, ResponseType.IDTOKEN, ResponseType.TOKEN, ResponseType.CODE_IDTOKEN, ResponseType.CODE_TOKEN, ResponseType.IDTOKEN_TOKEN, ResponseType.CODE_IDTOKEN_TOKEN)
     claims = listOf("vp_token", *(IDPConfig.config.claimMappings?.mappings?.map { m -> m.claim }?.toSet() ?: setOf()).toTypedArray())
     scopes = Scope("openid", *(IDPConfig.config.claimMappings?.mappings?.flatMap { m -> m.scope }?.toSet() ?: setOf()).toTypedArray())
     setCustomParameter("wallets_supported", VerifierConfig.config.wallets.values.map { wallet ->
@@ -132,12 +175,10 @@ object OIDCManager : IDPManager {
     )
   }
 
-  val jwtAlgorithm = Algorithm.HMAC256("FOO") // TODO: set algorithm and key according to key config
-
   val accessTokenProvider = JWTProvider(
     jwtAlgorithm,
     { session: OIDCSession, alg: Algorithm? ->
-      JWT.create().withSubject(session.id).withAudience(session.authRequest.redirectionURI.toString()).sign(alg)
+      JWT.create().withKeyId(keyId.id).withSubject(session.id).withAudience(session.authRequest.clientID.value).sign(alg)
     },
     JWT.require(jwtAlgorithm).build()
   )
@@ -146,10 +187,13 @@ object OIDCManager : IDPManager {
     jwtAlgorithm,
     { session: OIDCSession, alg: Algorithm? ->
       JWT.create()
+        .withKeyId(keyId.id)
         .withSubject(session.verificationResult!!.subject)
-        .withIssuer(IDPConfig.config.externalUrl)
+        .withIssuer("${IDPConfig.config.externalUrl}/api/oidc")
         .withIssuedAt(Date())
+        .withAudience(session.authRequest.clientID.value)
         .apply {
+          session.authRequest.customParameters["nonce"]?.firstOrNull()?.let { withClaim("nonce", it) }
           if(session.authRequest.responseType == ResponseType.IDTOKEN) {
             // add full user info to id_token, if implicit flow, with id_token only
             withPayload(getUserInfo(session).toJSONObject())
@@ -171,7 +215,7 @@ object OIDCManager : IDPManager {
 
   fun decodeAccessToken(decodedJWT: DecodedJWT): OIDCSession {
     val session = sessionCache.getIfPresent(decodedJWT.subject) ?: throw JWTDecodeException("Invalid oidc session id")
-    if(!decodedJWT.audience.contains(session.authRequest.redirectionURI.toString())) throw JWTDecodeException("Invalid audience for session")
+    if(!decodedJWT.audience.contains(session.authRequest.clientID.value)) throw JWTDecodeException("Invalid audience for session")
     return session
   }
 

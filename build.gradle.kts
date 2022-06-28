@@ -63,5 +63,5 @@ tasks.withType<Test> {
 }
 
 application {
-    mainClass.set("id.walt.MainKt")
+    mainClass.set("id.walt.idp.MainKt")
 }

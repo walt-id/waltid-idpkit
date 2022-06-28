@@ -17,7 +17,7 @@ class SIOPManager: VerifierManager() {
 
   override val verifierContext = UserContext(
     contextId = "SIOPManager",
-    hkvStore = FileSystemHKVStore(FilesystemStoreConfig("${id.walt.WALTID_DATA_ROOT}/data/")),
+    hkvStore = FileSystemHKVStore(FilesystemStoreConfig("${id.walt.WALTID_DATA_ROOT}/data/verifier")),
     keyStore = HKVKeyStoreService(),
     vcStore = HKVVcStoreService()
   )

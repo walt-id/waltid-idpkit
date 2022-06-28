@@ -1,5 +1,6 @@
 package id.walt.idp.oidc
 
+import com.nimbusds.jose.jwk.JWKSet
 import com.nimbusds.oauth2.sdk.AuthorizationCode
 import com.nimbusds.oauth2.sdk.AuthorizationCodeGrant
 import com.nimbusds.oauth2.sdk.AuthorizationRequest
@@ -31,6 +32,16 @@ object OIDCController {
         .json<OIDCProviderMetadata>("200"),
         OIDCController::openIdConfiguration
       ), OIDCAuthorizationRole.UNAUTHORIZED)
+      get("jwkSet", documented(
+      document().operation {
+        it.summary("get OIDC JWK set")
+          .addTagsItem("OIDC")
+          .operationId("jwkSet")
+      }
+        .json<JWKSet>("200"),
+      OIDCController::jwkSet
+      ), OIDCAuthorizationRole.UNAUTHORIZED)
+
       post("par", documented(
         document().operation {
           it.summary("Pushed authorization request")
@@ -82,6 +93,10 @@ object OIDCController {
 
   fun openIdConfiguration(ctx: Context) {
     ctx.json(OIDCManager.oidcProviderMetadata.toJSONObject())
+  }
+
+  fun jwkSet(ctx: Context) {
+    ctx.json(OIDCManager.keySet.toJSONObject(true))
   }
 
   fun pushedAuthorizationRequest(ctx: Context) {
