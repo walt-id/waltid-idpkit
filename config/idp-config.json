@@ -1,5 +1,12 @@
 {
-  "externalUrl": "http://localhost:6000",
+  "externalUrl": "http://172.19.0.1:8081",
+  "clients": {
+    "keycloak": {
+      "clientId": "keycloak",
+      "clientSecret": "keycloak",
+      "redirectUris": [ "http://localhost:8082/realms/master/broker/waltid-idpkit/endpoint" ]
+    }
+  },
   "claimMappings": {
     "mappings": [
       {

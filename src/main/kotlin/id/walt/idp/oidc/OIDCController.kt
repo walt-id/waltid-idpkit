@@ -1,19 +1,16 @@
 package id.walt.idp.oidc
 
 import com.nimbusds.jose.jwk.JWKSet
-import com.nimbusds.oauth2.sdk.AuthorizationCode
-import com.nimbusds.oauth2.sdk.AuthorizationCodeGrant
-import com.nimbusds.oauth2.sdk.AuthorizationRequest
-import com.nimbusds.oauth2.sdk.PushedAuthorizationSuccessResponse
+import com.nimbusds.oauth2.sdk.*
 import com.nimbusds.oauth2.sdk.http.ServletUtils
 import com.nimbusds.openid.connect.sdk.op.OIDCProviderMetadata
+import id.walt.idp.config.IDPClient
+import id.walt.idp.config.IDPConfig
 import id.walt.webwallet.backend.auth.UserRole
 import io.javalin.Javalin
 import io.javalin.apibuilder.ApiBuilder.*
 import io.javalin.core.security.RouteRole
-import io.javalin.http.BadRequestResponse
-import io.javalin.http.Context
-import io.javalin.http.HttpCode
+import io.javalin.http.*
 import io.javalin.plugin.openapi.dsl.document
 import io.javalin.plugin.openapi.dsl.documented
 import javalinjwt.JavalinJWT
@@ -22,7 +19,7 @@ import java.net.URI
 object OIDCController {
   val routes
     get() = path("") {
-      before(JavalinJWT.createHeaderDecodeHandler(OIDCManager.accessTokenProvider))
+
       get(".well-known/openid-configuration", documented(
         document().operation {
           it.summary("get OIDC provider meta data")
@@ -66,29 +63,45 @@ object OIDCController {
         },
         OIDCController::tokenRequest
       ), OIDCAuthorizationRole.OIDC_CLIENT)
-      post("userInfo", documented(
-        document().operation {
-         it.summary("User Info POST endpoint")
-           .addTagsItem("OIDC")
-           .operationId("userInfo")
-        },
-        OIDCController::userInfoRequest
-      ), OIDCAuthorizationRole.ACCESS_TOKEN)
-      get("userInfo", documented(
-        document().operation {
-          it.summary("User Info GET endpoint")
-            .addTagsItem("OIDC")
-            .operationId("userInfo")
-        },
-        OIDCController::userInfoRequest
-      ), OIDCAuthorizationRole.ACCESS_TOKEN)
+      before("userInfo", JavalinJWT.createHeaderDecodeHandler(OIDCManager.accessTokenProvider))
+      path("userInfo") {
+        post(documented(
+            document().operation {
+              it.summary("User Info POST endpoint")
+                .addTagsItem("OIDC")
+                .operationId("userInfo")
+            },
+            OIDCController::userInfoRequest
+          ), OIDCAuthorizationRole.ACCESS_TOKEN
+        )
+        get(documented(
+            document().operation {
+              it.summary("User Info GET endpoint")
+                .addTagsItem("OIDC")
+                .operationId("userInfo")
+            },
+            OIDCController::userInfoRequest
+          ), OIDCAuthorizationRole.ACCESS_TOKEN
+        )
+      }
     }
 
+  private fun clientAccessControl(ctx: Context): Boolean {
+    if(!ctx.basicAuthCredentialsExist()) {
+      throw UnauthorizedResponse("Unauthorized")
+    }
+    val clientCreds = ctx.basicAuthCredentials()
+    return OIDCManager.authorizeClient(clientCreds.username, clientCreds.password)
+  }
+
+  private fun getIDPClient(ctx: Context): IDPClient {
+    return IDPConfig.config.clients?.get(ctx.basicAuthCredentials().username) ?: throw BadRequestResponse("Invalid client id")
+  }
+
   fun accessControl(ctx: Context, routeRoles: MutableSet<RouteRole>): Boolean {
-    return routeRoles.contains(OIDCAuthorizationRole.UNAUTHORIZED) ||
-        // TODO: implement OIDC client authorization
-        routeRoles.contains(OIDCAuthorizationRole.OIDC_CLIENT) ||
-        routeRoles.contains(OIDCAuthorizationRole.ACCESS_TOKEN) && JavalinJWT.containsJWT(ctx)
+    return  routeRoles.contains(OIDCAuthorizationRole.UNAUTHORIZED) ||                              // unauthorized enpoints
+            routeRoles.contains(OIDCAuthorizationRole.OIDC_CLIENT) && clientAccessControl(ctx) ||   // endpoints requiring client authentication
+            routeRoles.contains(OIDCAuthorizationRole.ACCESS_TOKEN) && JavalinJWT.containsJWT(ctx)  // endpoints requiring access_token
   }
 
   fun openIdConfiguration(ctx: Context) {
@@ -101,6 +114,8 @@ object OIDCController {
 
   fun pushedAuthorizationRequest(ctx: Context) {
     val authReq = AuthorizationRequest.parse(ServletUtils.createHTTPRequest(ctx.req))
+    val idpClient = getIDPClient(ctx)
+    if(!OIDCManager.verifyClientRedirectUri(idpClient.clientId, authReq.redirectionURI.toString())) throw ForbiddenResponse("redirect_uri not allowed for client")
     val oidcSession = OIDCManager.initOIDCSession(authReq)
     ctx.status(HttpCode.CREATED).json(PushedAuthorizationSuccessResponse(URI.create("urn:ietf:params:oauth:request_uri:${oidcSession.id}"), OIDCManager.EXPIRATION_TIME.seconds).toJSONObject())
   }
@@ -120,8 +135,12 @@ object OIDCController {
   }
 
   fun tokenRequest(ctx: Context) {
-    val code = ctx.formParam("code") ?: throw BadRequestResponse("No authorization code specified")
-    val redirect_uri = ctx.formParam("redirect_uri") ?: throw BadRequestResponse("No redirect_uri specified")
+    val tokenReq = kotlin.runCatching { TokenRequest.parse(ServletUtils.createHTTPRequest(ctx.req)) }.getOrElse { throw BadRequestResponse(it.message ?: "Failed to parse token request") }
+    if(tokenReq.authorizationGrant.type != GrantType.AUTHORIZATION_CODE) throw BadRequestResponse("Unsupported authorization grant type")
+    val code = (tokenReq.authorizationGrant as AuthorizationCodeGrant).authorizationCode.value
+    val redirect_uri = (tokenReq.authorizationGrant as AuthorizationCodeGrant).redirectionURI.toString()
+    val idpClient = getIDPClient(ctx)
+    if(!OIDCManager.verifyClientRedirectUri(idpClient.clientId, redirect_uri)) throw ForbiddenResponse("redirect_uri not allowed for client")
     ctx.json(
       OIDCManager.getTokensFor(code, redirect_uri).toJSONObject()
     )

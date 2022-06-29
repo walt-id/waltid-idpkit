@@ -21,6 +21,7 @@ import id.walt.crypto.KeyAlgorithm
 import id.walt.crypto.KeyId
 import id.walt.idp.IDPManager
 import id.walt.idp.IDPType
+import id.walt.idp.config.IDPClient
 import id.walt.idp.util.WaltIdAlgorithm
 import id.walt.idp.config.IDPConfig
 import id.walt.idp.siop.SIOPState
@@ -212,6 +213,18 @@ object OIDCManager : IDPManager {
     },
     JWT.require(jwtAlgorithm).build()
   )
+
+  fun authorizeClient(clientID: String, clientSecret: String): Boolean {
+    return IDPConfig.config.clients?.get(clientID)?.let { idpClient ->
+      idpClient.clientId == clientID && idpClient.clientSecret == clientSecret
+    } ?: false
+  }
+
+  fun verifyClientRedirectUri(clientID: String, redirectUri: String): Boolean {
+    return IDPConfig.config.clients?.get(clientID)?.let { idpClient ->
+      idpClient.clientId == clientID && (idpClient.redirectUris?.contains(redirectUri) ?: idpClient.allowAllRedirectUris)
+    } ?: false
+  }
 
   fun decodeAccessToken(decodedJWT: DecodedJWT): OIDCSession {
     val session = sessionCache.getIfPresent(decodedJWT.subject) ?: throw JWTDecodeException("Invalid oidc session id")

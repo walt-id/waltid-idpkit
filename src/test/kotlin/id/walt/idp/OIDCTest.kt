@@ -1,6 +1,8 @@
 package id.walt.idp
 
 import com.nimbusds.oauth2.sdk.*
+import com.nimbusds.oauth2.sdk.auth.ClientSecretBasic
+import com.nimbusds.oauth2.sdk.auth.Secret
 import com.nimbusds.oauth2.sdk.id.ClientID
 import com.nimbusds.oauth2.sdk.id.Issuer
 import com.nimbusds.oauth2.sdk.id.State
@@ -8,6 +10,7 @@ import com.nimbusds.openid.connect.sdk.*
 import com.nimbusds.openid.connect.sdk.claims.IDTokenClaimsSet
 import com.nimbusds.openid.connect.sdk.op.OIDCProviderMetadata
 import id.walt.custodian.Custodian
+import id.walt.idp.config.IDPClient
 import id.walt.idp.config.IDPConfig
 import id.walt.idp.oidc.OIDCManager
 import id.walt.idp.rest.IDPRestAPI
@@ -56,13 +59,15 @@ class OIDCTest: AnnotationSpec() {
   lateinit var VC: String
   lateinit var VP: String
   val APP_REDIRECT = URI.create("http://app")
+  val CLIENT_ID = "test-client"
+  val CLIENT_SECRET = "test-secret"
 
   @BeforeClass
   fun init() {
     ServiceMatrix("service-matrix.properties")
     mockkObject(IDPConfig)
     mockkObject(VerifierConfig)
-    every { IDPConfig.config } returns IDPConfig(externalUrl = "http://localhost:8080", "", claimMappings = TEST_CLAIM_MAPPINGS)
+    every { IDPConfig.config } returns IDPConfig(externalUrl = "http://localhost:8080", "", claimMappings = TEST_CLAIM_MAPPINGS, clients = mapOf(CLIENT_ID to IDPClient(CLIENT_ID, CLIENT_SECRET, setOf(APP_REDIRECT.toString()))))
     every { VerifierConfig.config } returns VerifierConfig("http://localhost:8080", "http://localhost:8080/api/siop")
     DID = DidService.create(DidMethod.key)
     VC = Signatory.getService().issue("VerifiableId", ProofConfig(DID, DID, proofType = ProofType.LD_PROOF))
@@ -76,14 +81,16 @@ class OIDCTest: AnnotationSpec() {
     oidcMeta.claims shouldContain "vp_token"
 
     // APP: init oidc session (par request)
-    val parHTTPResponse = PushedAuthorizationRequest(oidcMeta.pushedAuthorizationRequestEndpointURI, authReq).toHTTPRequest().send()
+    val parHTTPResponse = PushedAuthorizationRequest(oidcMeta.pushedAuthorizationRequestEndpointURI, authReq).toHTTPRequest().apply {
+      authorization = ClientSecretBasic(ClientID(CLIENT_ID), Secret(CLIENT_SECRET)).toHTTPAuthorizationHeader()
+    }.send()
 
     parHTTPResponse.statusCode shouldBe HttpCode.CREATED.status
 
     val parResponse = PushedAuthorizationResponse.parse(parHTTPResponse)
 
     // APP: redirect to authorization endpoint on IDP
-    val authHttpResponse = AuthorizationRequest.Builder(parResponse.toSuccessResponse().requestURI, ClientID())
+    val authHttpResponse = AuthorizationRequest.Builder(parResponse.toSuccessResponse().requestURI, ClientID(CLIENT_ID))
       .endpointURI(oidcMeta.authorizationEndpointURI)
       .build().toHTTPRequest().apply {
         followRedirects = false
@@ -123,7 +130,7 @@ class OIDCTest: AnnotationSpec() {
     // APP: get oidc discovery document
     val metadata = shouldNotThrowAny { OIDCProviderMetadata.resolve(Issuer(OIDC_URI)) }
     // APP: init oidc session (par request)
-    val authReq = AuthorizationRequest.Builder(ResponseType.CODE, ClientID())
+    val authReq = AuthorizationRequest.Builder(ResponseType.CODE, ClientID(CLIENT_ID))
       .scope(Scope(OIDCScopeValue.OPENID))
       .customParameter("claims", VCClaims(
       vp_token = VpTokenClaim(PresentationDefinition( "1",
@@ -146,7 +153,9 @@ class OIDCTest: AnnotationSpec() {
     code shouldNotBe null
 
     // APP: get access token
-    val tokenHttpResponse = TokenRequest(metadata.tokenEndpointURI, ClientID(), AuthorizationCodeGrant(AuthorizationCode(code), APP_REDIRECT)).toHTTPRequest().send()
+    val tokenHttpResponse = TokenRequest(metadata.tokenEndpointURI, ClientID(CLIENT_ID), AuthorizationCodeGrant(AuthorizationCode(code), APP_REDIRECT)).toHTTPRequest().apply {
+      authorization = ClientSecretBasic(ClientID(CLIENT_ID), Secret(CLIENT_SECRET)).toHTTPAuthorizationHeader()
+    }.send()
     val tokenResponse = OIDCTokenResponse.parse(tokenHttpResponse)
 
     tokenResponse.indicatesSuccess() shouldBe true
@@ -170,7 +179,7 @@ class OIDCTest: AnnotationSpec() {
     // APP: get oidc discovery document
     val metadata = shouldNotThrowAny { OIDCProviderMetadata.resolve(Issuer(OIDC_URI)) }
     // APP: init oidc session (par request)
-    val authReq = AuthorizationRequest.Builder(ResponseType.IDTOKEN, ClientID())
+    val authReq = AuthorizationRequest.Builder(ResponseType.IDTOKEN, ClientID(CLIENT_ID))
       .scope(Scope(OIDCScopeValue.OPENID))
       .customParameter("claims", VCClaims(
         vp_token = VpTokenClaim(PresentationDefinition( "1",
@@ -199,7 +208,7 @@ class OIDCTest: AnnotationSpec() {
     // APP: get oidc discovery document
     val metadata = shouldNotThrowAny { OIDCProviderMetadata.resolve(Issuer(OIDC_URI)) }
     // APP: init oidc session (par request)
-    val authReq = AuthorizationRequest.Builder(ResponseType.CODE, ClientID())
+    val authReq = AuthorizationRequest.Builder(ResponseType.CODE, ClientID(CLIENT_ID))
       .scope(Scope(OIDCScopeValue.OPENID, OIDCScopeValue.PROFILE))
       .customParameter("walletId", targetWallet.id)
       .state(State("TEST"))
@@ -216,7 +225,9 @@ class OIDCTest: AnnotationSpec() {
     code shouldNotBe null
 
     // APP: get access token
-    val tokenHttpResponse = TokenRequest(metadata.tokenEndpointURI, ClientID(), AuthorizationCodeGrant(AuthorizationCode(code), APP_REDIRECT)).toHTTPRequest().send()
+    val tokenHttpResponse = TokenRequest(metadata.tokenEndpointURI, ClientID(), AuthorizationCodeGrant(AuthorizationCode(code), APP_REDIRECT)).toHTTPRequest().apply {
+      authorization = ClientSecretBasic(ClientID(CLIENT_ID), Secret(CLIENT_SECRET)).toHTTPAuthorizationHeader()
+    }.send()
     val tokenResponse = OIDCTokenResponse.parse(tokenHttpResponse)
 
     tokenResponse.indicatesSuccess() shouldBe true
