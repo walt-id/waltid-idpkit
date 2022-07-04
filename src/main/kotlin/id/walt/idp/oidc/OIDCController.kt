@@ -6,8 +6,6 @@ import com.nimbusds.oauth2.sdk.http.ServletUtils
 import com.nimbusds.openid.connect.sdk.op.OIDCProviderMetadata
 import id.walt.idp.config.IDPClient
 import id.walt.idp.config.IDPConfig
-import id.walt.webwallet.backend.auth.UserRole
-import io.javalin.Javalin
 import io.javalin.apibuilder.ApiBuilder.*
 import io.javalin.core.security.RouteRole
 import io.javalin.http.*
@@ -58,7 +56,7 @@ object OIDCController {
       ), OIDCAuthorizationRole.UNAUTHORIZED)
       post("token", documented(
         document().operation {
-         it.summary("Token endoint")
+         it.summary("Token endpoint")
            .addTagsItem("OIDC")
            .operationId("token")
         },
@@ -87,7 +85,7 @@ object OIDCController {
       }
     }
 
-  val log = KotlinLogging.logger {}
+  private val log = KotlinLogging.logger {}
 
   private fun clientAccessControl(ctx: Context): Boolean {
     if(!ctx.basicAuthCredentialsExist()) {
@@ -103,20 +101,20 @@ object OIDCController {
   }
 
   fun accessControl(ctx: Context, routeRoles: MutableSet<RouteRole>): Boolean {
-    return  routeRoles.contains(OIDCAuthorizationRole.UNAUTHORIZED) ||                              // unauthorized enpoints
+    return  routeRoles.contains(OIDCAuthorizationRole.UNAUTHORIZED) ||                              // unauthorized endpoints
             routeRoles.contains(OIDCAuthorizationRole.OIDC_CLIENT) && clientAccessControl(ctx) ||   // endpoints requiring client authentication
             routeRoles.contains(OIDCAuthorizationRole.ACCESS_TOKEN) && JavalinJWT.containsJWT(ctx)  // endpoints requiring access_token
   }
 
-  fun openIdConfiguration(ctx: Context) {
+  private fun openIdConfiguration(ctx: Context) {
     ctx.json(OIDCManager.oidcProviderMetadata.toJSONObject())
   }
 
-  fun jwkSet(ctx: Context) {
+  private fun jwkSet(ctx: Context) {
     ctx.json(OIDCManager.keySet.toJSONObject(true))
   }
 
-  fun pushedAuthorizationRequest(ctx: Context) {
+  private fun pushedAuthorizationRequest(ctx: Context) {
     val authReq = AuthorizationRequest.parse(ServletUtils.createHTTPRequest(ctx.req))
     val idpClient = getIDPClient(ctx)
     if(!OIDCManager.verifyClientRedirectUri(idpClient.clientId, authReq.redirectionURI.toString())) throw ForbiddenResponse("redirect_uri not allowed for client")
@@ -124,7 +122,7 @@ object OIDCController {
     ctx.status(HttpCode.CREATED).json(PushedAuthorizationSuccessResponse(URI.create("urn:ietf:params:oauth:request_uri:${oidcSession.id}"), OIDCManager.EXPIRATION_TIME.seconds).toJSONObject())
   }
 
-  fun authorizationRequest(ctx: Context) {
+  private fun authorizationRequest(ctx: Context) {
     val oidcSession = ctx.queryParam("request_uri")?.let {
       OIDCManager.getOIDCSession(it) ?: throw BadRequestResponse("Session not found or expired")
     } ?: OIDCManager.initOIDCSession(
@@ -138,25 +136,25 @@ object OIDCController {
     ctx.status(HttpCode.FOUND).header("Location", OIDCManager.getWalletRedirectionUri(oidcSession).toString())
   }
 
-  fun tokenRequest(ctx: Context) {
+  private fun tokenRequest(ctx: Context) {
     val tokenReq = kotlin.runCatching { TokenRequest.parse(ServletUtils.createHTTPRequest(ctx.req)) }.getOrElse { throw BadRequestResponse(it.message ?: "Failed to parse token request") }
     if(tokenReq.authorizationGrant.type != GrantType.AUTHORIZATION_CODE) throw BadRequestResponse("Unsupported authorization grant type")
     val code = (tokenReq.authorizationGrant as AuthorizationCodeGrant).authorizationCode.value
-    val redirect_uri = (tokenReq.authorizationGrant as AuthorizationCodeGrant).redirectionURI.toString()
+    val redirectUri = (tokenReq.authorizationGrant as AuthorizationCodeGrant).redirectionURI.toString()
     val idpClient = getIDPClient(ctx)
-    if(!OIDCManager.verifyClientRedirectUri(idpClient.clientId, redirect_uri)) throw ForbiddenResponse("redirect_uri not allowed for client")
+    if(!OIDCManager.verifyClientRedirectUri(idpClient.clientId, redirectUri)) throw ForbiddenResponse("redirect_uri not allowed for client")
     ctx.json(
-      OIDCManager.getTokensFor(code, redirect_uri).toJSONObject()
+      OIDCManager.getTokensFor(code, redirectUri).toJSONObject()
     )
   }
 
-  fun userInfoRequest(ctx: Context) {
+  private fun userInfoRequest(ctx: Context) {
     val session = kotlin.runCatching {
       OIDCManager.decodeAccessToken(JavalinJWT.getDecodedFromContext(ctx))
     }.getOrElse { exc -> throw BadRequestResponse(exc.message ?: "Bad request") }
     val verificationResult = session.verificationResult ?: throw BadRequestResponse("Session not yet verified")
     if(!verificationResult.isValid) throw BadRequestResponse("Session could not be verified")
-    val vp_token = verificationResult.vp_token ?: throw BadRequestResponse("No vp_token found for session")
+    verificationResult.vp_token ?: throw BadRequestResponse("No vp_token found for session")
 
     ctx.json(OIDCManager.getUserInfo(session).toJSONObject())
   }
