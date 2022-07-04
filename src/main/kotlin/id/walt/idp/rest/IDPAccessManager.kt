@@ -9,7 +9,7 @@ import io.javalin.http.HttpCode
 import mu.KotlinLogging
 
 object IDPAccessManager : AccessManager {
-  val log = KotlinLogging.logger {}
+  private val log = KotlinLogging.logger {}
   override fun manage(handler: Handler, ctx: Context, routeRoles: MutableSet<RouteRole>) {
     if(ctx.endpointHandlerPath().startsWith("/api/oidc/")) {
       if(OIDCController.accessControl(ctx, routeRoles)) {

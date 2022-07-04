@@ -7,12 +7,10 @@ import com.nimbusds.oauth2.sdk.id.ClientID
 import com.nimbusds.oauth2.sdk.id.Issuer
 import com.nimbusds.oauth2.sdk.id.State
 import com.nimbusds.openid.connect.sdk.*
-import com.nimbusds.openid.connect.sdk.claims.IDTokenClaimsSet
 import com.nimbusds.openid.connect.sdk.op.OIDCProviderMetadata
 import id.walt.custodian.Custodian
 import id.walt.idp.config.IDPClient
 import id.walt.idp.config.IDPConfig
-import id.walt.idp.oidc.OIDCManager
 import id.walt.idp.rest.IDPRestAPI
 import id.walt.model.DidMethod
 import id.walt.model.dif.InputDescriptor
@@ -35,9 +33,7 @@ import id.walt.vclib.model.toCredential
 import id.walt.vclib.templates.VcTemplateManager
 import id.walt.verifier.backend.VerifierConfig
 import id.walt.verifier.backend.WalletConfiguration
-import id.walt.webwallet.backend.config.WalletConfig
 import io.javalin.http.HttpCode
-import io.kotest.assertions.json.shouldMatchJson
 import io.kotest.assertions.throwables.shouldNotThrowAny
 import io.kotest.core.spec.style.AnnotationSpec
 import io.kotest.matchers.collections.shouldContain
@@ -50,17 +46,15 @@ import io.kotest.matchers.string.shouldContain
 import io.mockk.every
 import io.mockk.mockkObject
 import java.net.URI
-import java.util.*
 
 class OIDCTest: AnnotationSpec() {
 
-  val OIDC_URI = URI.create("http://localhost:8080/api/oidc")
-  lateinit var DID: String
-  lateinit var VC: String
-  lateinit var VP: String
-  val APP_REDIRECT = URI.create("http://app")
-  val CLIENT_ID = "test-client"
-  val CLIENT_SECRET = "test-secret"
+  private val OIDC_URI: URI = URI.create("http://localhost:8080/api/oidc")
+  private lateinit var DID: String
+  private lateinit var VC: String
+  private val APP_REDIRECT: URI = URI.create("http://app")
+  private val CLIENT_ID = "test-client"
+  private val CLIENT_SECRET = "test-secret"
 
   @BeforeClass
   fun init() {
@@ -74,16 +68,21 @@ class OIDCTest: AnnotationSpec() {
     IDPRestAPI.start()
   }
 
-  fun simulateAuthReqToAppRedirect(authReq: AuthorizationRequest, targetWallet: WalletConfiguration, oidcMeta: OIDCProviderMetadata): URI {
+  private fun simulateAuthReqToAppRedirect(
+    authReq: AuthorizationRequest,
+    targetWallet: WalletConfiguration,
+    oidcMeta: OIDCProviderMetadata
+  ): URI {
 
     oidcMeta.scopes shouldContain OIDCScopeValue.OPENID
     oidcMeta.scopes shouldContainAll authReq.scope
     oidcMeta.claims shouldContain "vp_token"
 
     // APP: init oidc session (par request)
-    val parHTTPResponse = PushedAuthorizationRequest(oidcMeta.pushedAuthorizationRequestEndpointURI, authReq).toHTTPRequest().apply {
-      authorization = ClientSecretBasic(ClientID(CLIENT_ID), Secret(CLIENT_SECRET)).toHTTPAuthorizationHeader()
-    }.send()
+    val parHTTPResponse =
+      PushedAuthorizationRequest(oidcMeta.pushedAuthorizationRequestEndpointURI, authReq).toHTTPRequest().apply {
+        authorization = ClientSecretBasic(ClientID(CLIENT_ID), Secret(CLIENT_SECRET)).toHTTPAuthorizationHeader()
+      }.send()
 
     parHTTPResponse.statusCode shouldBe HttpCode.CREATED.status
 
@@ -116,12 +115,13 @@ class OIDCTest: AnnotationSpec() {
       state = authReq.state.value
     )
     val vpSvc = OIDC4VPService(OIDCProvider("", ""))
-    val presentation = Custodian.getService().createPresentation(listOf(VC), DID, challenge = siopReq.nonce, expirationDate = null).toCredential() as VerifiablePresentation
+    val presentation =
+      Custodian.getService().createPresentation(listOf(VC), DID, challenge = siopReq.nonce, expirationDate = null)
+        .toCredential() as VerifiablePresentation
     val siopResponse = vpSvc.getSIOPResponseFor(siopReq, DID, listOf(presentation))
 
     // IDP: redirects to APP with authorization code
-    val redirectToAPP = URI.create(vpSvc.postSIOPResponse(siopReq, siopResponse))
-    return redirectToAPP
+    return URI.create(vpSvc.postSIOPResponse(siopReq, siopResponse))
   }
 
   @Test
@@ -169,8 +169,8 @@ class OIDCTest: AnnotationSpec() {
     val userInfoResponse = UserInfoResponse.parse(userInfoHttpResponse)
     userInfoResponse.toSuccessResponse().userInfo.subject.value shouldBe DID
 
-    val vp_token = userInfoResponse.toSuccessResponse().userInfo.getStringClaim("vp_token")
-    vp_token shouldNotBe null
+    val vpToken = userInfoResponse.toSuccessResponse().userInfo.getStringClaim("vp_token")
+    vpToken shouldNotBe null
   }
 
   @Test

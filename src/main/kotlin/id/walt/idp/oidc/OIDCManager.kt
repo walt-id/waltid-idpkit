@@ -147,7 +147,7 @@ object OIDCManager : IDPManager {
   fun getWalletRedirectionUri(session: OIDCSession): URI {
     val siopReq = VerifierManager.getService().newRequest(
       tokenClaim = session.vpTokenClaim,
-      state = SIOPState(IDP_TYPE, session.id).encode()
+      state = SIOPState(idpType, session.id).encode()
     )
     return URI.create("${session.wallet.url}/${session.wallet.presentPath}?${siopReq.toUriQueryString()}")
   }
@@ -308,5 +308,5 @@ object OIDCManager : IDPManager {
     }
   }
 
-  override val IDP_TYPE = IDPType.OIDC
+  override val idpType = IDPType.OIDC
 }

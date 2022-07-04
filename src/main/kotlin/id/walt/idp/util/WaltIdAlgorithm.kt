@@ -10,7 +10,7 @@ import id.walt.services.crypto.CryptoService
 import id.walt.webwallet.backend.context.UserContext
 import id.walt.webwallet.backend.context.WalletContextManager
 
-class WaltIdAlgorithm(val keyId: KeyId, val context: UserContext, alg: KeyAlgorithm)
+class WaltIdAlgorithm(private val keyId: KeyId, private val context: UserContext, alg: KeyAlgorithm)
   : Algorithm(when(alg) {
       KeyAlgorithm.EdDSA_Ed25519 -> "EdDSA"
       KeyAlgorithm.ECDSA_Secp256k1 -> "ES256K"
