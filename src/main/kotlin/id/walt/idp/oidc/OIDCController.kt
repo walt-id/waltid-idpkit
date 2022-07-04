@@ -14,6 +14,7 @@ import io.javalin.http.*
 import io.javalin.plugin.openapi.dsl.document
 import io.javalin.plugin.openapi.dsl.documented
 import javalinjwt.JavalinJWT
+import mu.KotlinLogging
 import java.net.URI
 
 object OIDCController {
@@ -86,8 +87,11 @@ object OIDCController {
       }
     }
 
+  val log = KotlinLogging.logger {}
+
   private fun clientAccessControl(ctx: Context): Boolean {
     if(!ctx.basicAuthCredentialsExist()) {
+      log.warn("Request required client authentication, but no basic auth credential was found")
       throw UnauthorizedResponse("Unauthorized")
     }
     val clientCreds = ctx.basicAuthCredentials()
