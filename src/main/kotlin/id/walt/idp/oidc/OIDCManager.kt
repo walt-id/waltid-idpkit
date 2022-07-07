@@ -11,6 +11,7 @@ import com.nimbusds.jose.jwk.JWK
 import com.nimbusds.jose.jwk.JWKSet
 import com.nimbusds.jwt.JWTClaimsSet
 import com.nimbusds.oauth2.sdk.*
+import com.nimbusds.oauth2.sdk.auth.ClientAuthenticationMethod
 import com.nimbusds.oauth2.sdk.id.Issuer
 import com.nimbusds.oauth2.sdk.token.AccessToken
 import com.nimbusds.oauth2.sdk.token.BearerAccessToken
@@ -104,6 +105,7 @@ object OIDCManager : IDPManager {
         "description" to wallet.description
       )
     })
+    tokenEndpointAuthMethods = listOf(ClientAuthenticationMethod.CLIENT_SECRET_BASIC)
   }
 
   private fun generateVpTokenClaim(authRequest: AuthorizationRequest): VpTokenClaim {
