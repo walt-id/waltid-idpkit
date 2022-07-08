@@ -17,6 +17,7 @@ import com.nimbusds.openid.connect.sdk.token.OIDCTokens
 import id.walt.idp.IDPManager
 import id.walt.idp.IDPType
 import id.walt.idp.config.IDPConfig
+import id.walt.idp.nfts.NFTManager
 import id.walt.idp.siop.SIOPState
 import id.walt.model.dif.*
 import id.walt.model.oidc.VpTokenClaim
@@ -75,6 +76,7 @@ object OIDCManager : IDPManager {
 
   fun initOIDCSession(authRequest: AuthorizationRequest): OIDCSession {
     val vpTokenClaim = generateVpTokenClaim(authRequest)
+    val nftClaim = NFTManager.generateNftClaim(authRequest)
     val walletId = authRequest.customParameters["walletId"]?.firstOrNull() ?: VerifierConfig.config.wallets.values.map { wc -> wc.id }.firstOrNull() ?: throw InternalServerErrorResponse("Known wallets not configured")
     val wallet = VerifierConfig.config.wallets[walletId] ?: throw BadRequestResponse("No wallet configuration found for given walletId")
 
@@ -82,6 +84,7 @@ object OIDCManager : IDPManager {
       id = UUID.randomUUID().toString(),
       authRequest = authRequest,
       vpTokenClaim = vpTokenClaim,
+      NFTClaim= nftClaim,
       wallet = wallet
     ).also {
       sessionCache.put(it.id, it)
@@ -101,10 +104,12 @@ object OIDCManager : IDPManager {
 
   fun getWalletRedirectionUri(session: OIDCSession): URI {
     val siopReq = VerifierManager.getService().newRequest(
-      tokenClaim = session.vpTokenClaim,
+      tokenClaim = session.vpTokenClaim!!,
       state = SIOPState(IDP_TYPE, session.id).encode()
     )
-    return URI.create("${session.wallet.url}/${session.wallet.presentPath}?${siopReq.toUriQueryString()}")
+    //return URI.create("${session.wallet.url}/${session.wallet.presentPath}?${siopReq.toUriQueryString()}")
+    return URI.create("${session.wallet.url}/${session.wallet.presentPath}?session=${session.id}&redirect_uri=http://localhost:8080/api/nft/callback")
+
   }
 
   fun getIdTokenFor(session: OIDCSession): String {

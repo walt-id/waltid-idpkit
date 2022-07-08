@@ -51,6 +51,9 @@ dependencies {
     testImplementation("io.kotest:kotest-assertions-core:5.1.0")
     testImplementation("io.kotest:kotest-assertions-json:5.1.0")
 
+    // NftKit
+    implementation("id.walt:waltid-nftkit:1.0.0")
+
 }
 
 

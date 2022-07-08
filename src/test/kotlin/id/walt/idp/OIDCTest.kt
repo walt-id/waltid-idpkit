@@ -9,6 +9,8 @@ import com.nimbusds.openid.connect.sdk.claims.IDTokenClaimsSet
 import com.nimbusds.openid.connect.sdk.op.OIDCProviderMetadata
 import id.walt.custodian.Custodian
 import id.walt.idp.config.IDPConfig
+import id.walt.idp.nfts.NFTClaim
+import id.walt.idp.nfts.NFTClaims
 import id.walt.idp.oidc.OIDCManager
 import id.walt.idp.rest.IDPRestAPI
 import id.walt.model.DidMethod
@@ -19,6 +21,7 @@ import id.walt.model.oidc.OIDCProvider
 import id.walt.model.oidc.SIOPv2Request
 import id.walt.model.oidc.VCClaims
 import id.walt.model.oidc.VpTokenClaim
+import id.walt.nftkit.services.Chain
 import id.walt.servicematrix.ServiceMatrix
 import id.walt.services.did.DidService
 import id.walt.services.oidc.OIDC4VPService
@@ -237,4 +240,95 @@ class OIDCTest: AnnotationSpec() {
     userInfoResponse.toSuccessResponse().userInfo.gender.value shouldBe verifiableId.credentialSubject!!.gender
 
   }
+
+  fun simulateNFTAuthReqToAppRedirect(authReq: AuthorizationRequest, targetWallet: WalletConfiguration, oidcMeta: OIDCProviderMetadata): URI {
+
+    oidcMeta.scopes shouldContain OIDCScopeValue.OPENID
+    oidcMeta.scopes shouldContainAll authReq.scope
+    //oidcMeta.claims shouldContain "smartContractAddress"
+/*session creation*/
+    // APP: init oidc session (par request)
+    val parHTTPResponse = PushedAuthorizationRequest(oidcMeta.pushedAuthorizationRequestEndpointURI, authReq).toHTTPRequest().send()
+    val parHTTPResponse1 = PushedAuthorizationRequest(oidcMeta.pushedAuthorizationRequestEndpointURI, authReq).toHTTPRequest()
+    parHTTPResponse.statusCode shouldBe HttpCode.CREATED.status
+
+    val parResponse = PushedAuthorizationResponse.parse(parHTTPResponse)
+
+    val authHttpResponse = AuthorizationRequest.Builder(parResponse.toSuccessResponse().requestURI, ClientID())
+      .endpointURI(oidcMeta.authorizationEndpointURI)
+      .build().toHTTPRequest().apply {
+        followRedirects = false
+      }.send()
+
+    // IDP: redirects to WALLET
+    //authHttpResponse.statusCode shouldBe HttpCode.FOUND.status
+    //authHttpResponse.location.authority shouldBe URI.create(targetWallet.url).authority
+    //authHttpResponse.location.path.trim('/') shouldBe targetWallet.presentPath.trim('/')
+
+    // WALLET: parse SIOP request
+    val authReq = AuthorizationRequest.parse(authHttpResponse.location)
+
+
+    // WALLET: fulfill SIOP request on IDP
+    /*val siopReq = SIOPv2Request(
+      redirect_uri = authReq.redirectionURI.toString(),
+      response_mode = authReq.responseMode.value,
+      nonce = authReq.customParameters["nonce"]!!.first(),
+      claims = vcClaims,
+      state = authReq.state.value
+    )*/
+    /*val vpSvc = OIDC4VPService(OIDCProvider("", ""))
+    val presentation = Custodian.getService().createPresentation(listOf(VC), DID, challenge = siopReq.nonce, expirationDate = null).toCredential() as VerifiablePresentation
+    val siopResponse = vpSvc.getSIOPResponseFor(siopReq, DID, listOf(presentation))*/
+
+    // IDP: redirects to APP with authorization code
+    val redirectToAPP = URI.create("")
+    return redirectToAPP
+  }
+
+  @Test
+  fun testNFTOwnershipCodeFlow() {
+    val targetWallet = VerifierConfig.config.wallets.values.first()
+    // APP: get oidc discovery document
+    val metadata = shouldNotThrowAny { OIDCProviderMetadata.resolve(Issuer(OIDC_URI)) }
+    // APP: init oidc session (par request) I delete VPClaim and I add NFTs claim
+    val authReq = AuthorizationRequest.Builder(ResponseType.CODE, ClientID())
+      .scope(Scope(OIDCScopeValue.OPENID))
+      .customParameter("claims", NFTClaims(
+        NFTClaim(Chain.MUMBAI, "")
+      ).toJSONString())
+      .customParameter("walletId", targetWallet.id)
+      .state(State("TEST"))
+      .redirectionURI(APP_REDIRECT)
+      .build()
+
+    // IDP: redirects to APP with authorization code
+    val redirectToAPP = simulateNFTAuthReqToAppRedirect(authReq, targetWallet, metadata)
+    redirectToAPP.query shouldContain "state=TEST"
+    redirectToAPP.query shouldContain "code="
+
+    // APP: parse authorization code
+    val code = OIDCUtils.getCodeFromRedirectUri(redirectToAPP)
+    code shouldNotBe null
+
+    // APP: get access token
+    val tokenHttpResponse = TokenRequest(metadata.tokenEndpointURI, ClientID(), AuthorizationCodeGrant(AuthorizationCode(code), APP_REDIRECT)).toHTTPRequest().send()
+    val tokenResponse = OIDCTokenResponse.parse(tokenHttpResponse)
+
+    tokenResponse.indicatesSuccess() shouldBe true
+    tokenResponse.oidcTokens.idToken.jwtClaimsSet.claims shouldNotContainKey  "vp_token"
+    tokenResponse.oidcTokens.idToken.jwtClaimsSet.subject shouldBe DID
+
+    // APP: get userInfo
+    val userInfoHttpResponse = UserInfoRequest(metadata.userInfoEndpointURI, tokenResponse.toSuccessResponse().tokens.accessToken).toHTTPRequest().send()
+    userInfoHttpResponse.indicatesSuccess() shouldBe true
+
+    val userInfoResponse = UserInfoResponse.parse(userInfoHttpResponse)
+    userInfoResponse.toSuccessResponse().userInfo.subject.value shouldBe DID
+
+    val vp_token = userInfoResponse.toSuccessResponse().userInfo.getStringClaim("vp_token")
+    vp_token shouldNotBe null
+  }
+
+
 }
