@@ -25,3 +25,5 @@ hs_err_pid*
 /build/
 /.gradle/
 /.idea/
+/secret_maven_password.txt
+/secret_maven_username.txt

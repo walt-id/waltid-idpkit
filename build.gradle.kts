@@ -1,6 +1,7 @@
 plugins {
     kotlin("jvm") version "1.5.31"
     application
+    `maven-publish`
 }
 
 group = "id.walt"
@@ -64,4 +65,37 @@ tasks.withType<Test> {
 
 application {
     mainClass.set("id.walt.idp.MainKt")
+}
+
+publishing {
+    publications {
+        create<MavenPublication>("mavenJava") {
+            pom {
+                name.set("walt.id IDP Kit")
+                description.set("Kotlin/Java library for IDP Kit.")
+                url.set("https://walt.id")
+            }
+            from(components["java"])
+        }
+    }
+
+    repositories {
+        maven {
+            url = uri("https://maven.walt.id/repository/waltid-ssi-kit/")
+            val usernameFile = File("secret_maven_username.txt")
+            val passwordFile = File("secret_maven_password.txt")
+            val secretMavenUsername = System.getenv()["MAVEN_USERNAME"] ?: if (usernameFile.isFile) { usernameFile.readLines()[0] } else { "" }
+            println("Deploy username length: ${secretMavenUsername.length}")
+            val secretMavenPassword = System.getenv()["MAVEN_PASSWORD"] ?: if (passwordFile.isFile) { passwordFile.readLines()[0] } else { "" }
+
+            if (secretMavenPassword.isBlank()) {
+                println("WARNING: Password is blank!")
+            }
+
+            credentials {
+                username = secretMavenUsername
+                password = secretMavenPassword
+            }
+        }
+    }
 }
