@@ -3,7 +3,7 @@ name: Snapshot release workflow for walt.id SSI Kit
 on:
   push:
     branches:
-      - master
+      - main
 
 jobs:
   verify-wrapper:
