@@ -151,14 +151,7 @@ spec:
     - host: idp.walt-test.cloud
       http:
         paths:
-          - path: /api/
-            pathType: Prefix
-            backend:
-              service:
-                name: idpkit
-                port:
-                  number: 80
-          - path: /webjars
+          - path: /
             pathType: Prefix
             backend:
               service:
