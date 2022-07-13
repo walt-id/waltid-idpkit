@@ -3,10 +3,10 @@ name: CI/CD Workflow for walt.id SSI Kit
 on:
   push:
     branches:
-      - master
+      - main
   pull_request:
     branches:
-      - master
+      - main
 
 jobs:
   verify-wrapper:
