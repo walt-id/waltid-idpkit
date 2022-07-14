@@ -75,15 +75,16 @@ object OIDCManager : IDPManager {
   }
 
   fun initOIDCSession(authRequest: AuthorizationRequest): OIDCSession {
-    val vpTokenClaim = generateVpTokenClaim(authRequest)
+    //val vpTokenClaim = generateVpTokenClaim(authRequest)
     val nftClaim = NFTManager.generateNftClaim(authRequest)
-    val walletId = authRequest.customParameters["walletId"]?.firstOrNull() ?: VerifierConfig.config.wallets.values.map { wc -> wc.id }.firstOrNull() ?: throw InternalServerErrorResponse("Known wallets not configured")
+    //val walletId = authRequest.customParameters["walletId"]?.firstOrNull() ?: VerifierConfig.config.wallets.values.map { wc -> wc.id }.firstOrNull() ?: throw InternalServerErrorResponse("Known wallets not configured")
+    val walletId = "NFTswallet"
     val wallet = VerifierConfig.config.wallets[walletId] ?: throw BadRequestResponse("No wallet configuration found for given walletId")
 
     return OIDCSession(
       id = UUID.randomUUID().toString(),
       authRequest = authRequest,
-      vpTokenClaim = vpTokenClaim,
+      //vpTokenClaim = vpTokenClaim,
       NFTClaim= nftClaim,
       wallet = wallet
     ).also {
@@ -103,13 +104,13 @@ object OIDCManager : IDPManager {
   val oidcApiUrl: String get() = "${IDPConfig.config.externalUrl}/$oidcApiPath"
 
   fun getWalletRedirectionUri(session: OIDCSession): URI {
-    val siopReq = VerifierManager.getService().newRequest(
+    /*val siopReq = VerifierManager.getService().newRequest(
       tokenClaim = session.vpTokenClaim!!,
       state = SIOPState(IDP_TYPE, session.id).encode()
-    )
+    )*/
     //return URI.create("${session.wallet.url}/${session.wallet.presentPath}?${siopReq.toUriQueryString()}")
-    return URI.create("${session.wallet.url}/${session.wallet.presentPath}?session=${session.id}&redirect_uri=http://localhost:8080/api/nft/callback")
-
+    return URI.create("${session.wallet.url}?session=${session.id}&redirect_uri=http://localhost:8080/api/nft/callback")
+    //return URI.create("http://localhost:3000?session=${session.id}&redirect_uri=http://localhost:8080/api/nft/callback")
   }
 
   fun getIdTokenFor(session: OIDCSession): String {
@@ -151,7 +152,7 @@ object OIDCManager : IDPManager {
     jwtAlgorithm,
     { session: OIDCSession, alg: Algorithm? ->
       JWT.create()
-        .withSubject(session.verificationResult!!.subject)
+        .withSubject(session.verificationResult!!.siopResponseVerificationResult!!.subject)
         .withIssuer(IDPConfig.config.externalUrl)
         .withIssuedAt(Date())
         .apply {
@@ -181,27 +182,45 @@ object OIDCManager : IDPManager {
   }
 
   fun populateUserInfoClaims(claimBuilder: JWTClaimsSet.Builder, session: OIDCSession) {
-    if(session.verificationResult?.vp_token == null) throw BadRequestResponse("No vp_token received from SIOP response")
+    //update to add nft metadata in token user claims
+    if(session.verificationResult?.siopResponseVerificationResult!=null && session.verificationResult?.siopResponseVerificationResult?.vp_token == null) throw BadRequestResponse("No vp_token received from SIOP response")
 
-    // populate vp_token claim, if specifically requested in auth request
-    if(OIDCUtils.getVCClaims(session.authRequest).vp_token != null) {
-      claimBuilder.claim("vp_token", session.verificationResult!!.vp_token!!.encode())
+    if(session.verificationResult?.siopResponseVerificationResult!=null && session.verificationResult?.siopResponseVerificationResult?.vp_token == null) {
+      // populate vp_token claim, if specifically requested in auth request
+      if (OIDCUtils.getVCClaims(session.authRequest).vp_token != null) {
+        claimBuilder.claim(
+          "vp_token",
+          session.verificationResult!!.siopResponseVerificationResult!!.vp_token!!.encode()
+        )
+      }
+
+      // populate claims based on OIDC Scope, and/or claims requested in auth request
+      (session.authRequest.scope?.flatMap { s -> IDPConfig.config.claimMappings?.mappingsForScope(s) ?: listOf() }
+        ?: listOf())
+        .plus(session.authRequest.customParameters["claims"]?.flatMap { c ->
+          IDPConfig.config.claimMappings?.mappingsForClaim(
+            c
+          ) ?: listOf()
+        } ?: listOf())
+        .toSet().forEach { m ->
+          val credential =
+            session.verificationResult!!.siopResponseVerificationResult?.vp_token!!.verifiableCredential.firstOrNull { c ->
+              c.type.contains(m.credentialType)
+            } ?: throw BadRequestResponse("vp_token from SIOP resposne doesn't contain required credentials")
+          val jp = JsonPath.parse(credential.json)
+          val value = m.valuePath.split(" ").map { jp.read<Any>(it) }.joinToString(" ")
+          claimBuilder.claim(m.claim, value)
+        }
     }
 
-    // populate claims based on OIDC Scope, and/or claims requested in auth request
-    (session.authRequest.scope?.flatMap { s -> IDPConfig.config.claimMappings?.mappingsForScope(s) ?: listOf() } ?: listOf())
-      .plus(session.authRequest.customParameters["claims"]?.flatMap { c -> IDPConfig.config.claimMappings?.mappingsForClaim(c) ?: listOf() } ?: listOf())
-      .toSet().forEach { m ->
-        val credential = session.verificationResult!!.vp_token!!.verifiableCredential.firstOrNull{ c -> c.type.contains(m.credentialType) } ?: throw BadRequestResponse("vp_token from SIOP resposne doesn't contain required credentials")
-        val jp = JsonPath.parse(credential.json)
-        val value = m.valuePath.split(" ").map { jp.read<Any>(it) }.joinToString(" ")
-        claimBuilder.claim(m.claim, value)
-      }
+    if(session.verificationResult?.nftresponseVerificationResult != null) {
+      claimBuilder.claim("account", session.verificationResult?.nftresponseVerificationResult!!.account)
+    }
   }
 
   fun getUserInfo(session: OIDCSession): UserInfo {
     val verificationResult = session.verificationResult ?: throw BadRequestResponse("SIOP request not yet verified")
-    val claimBuilder = JWTClaimsSet.Builder().subject(verificationResult.subject)
+    val claimBuilder = JWTClaimsSet.Builder().subject(verificationResult.siopResponseVerificationResult!!.subject)
     populateUserInfoClaims(claimBuilder, session)
     return UserInfo(
       claimBuilder.build()
@@ -235,9 +254,11 @@ object OIDCManager : IDPManager {
     }
 
   override fun continueIDPSessionForSIOPResponse(sessionId: String, verificationResult: SIOPResponseVerificationResult): URI {
+    //make new class ResponseVerificationResult that handle SIOP or NFT verification based on session data
+    //no modification on that function. Just, SIOPResponseVerificationResult -> ResponseVerificationResult
     val session = getOIDCSession(sessionId) ?: throw BadRequestResponse("OIDC session invalid or expired")
     if(verificationResult.isValid) {
-      session.verificationResult = verificationResult
+      session.verificationResult = ResponseVerificationResult(verificationResult)
       updateOIDCSession(session)
       return URI.create(
         "${session.authRequest.redirectionURI}" +
@@ -251,6 +272,27 @@ object OIDCManager : IDPManager {
         "error=invalid_request" +
         "&error_description=${URLEncoder.encode(errorDescriptionFor(verificationResult), StandardCharsets.UTF_8)}" +
         "&state=${session.authRequest.state}"
+      )
+    }
+  }
+
+  fun continueIDPSessionResponse(sessionId: String, verificationResult: ResponseVerificationResult): URI {
+    val session = getOIDCSession(sessionId) ?: throw BadRequestResponse("OIDC session invalid or expired")
+    if(verificationResult.isValid) {
+      session.verificationResult = verificationResult
+      updateOIDCSession(session)
+      return URI.create(
+        "${session.authRequest.redirectionURI}" +
+                fragmentOrQuery(session) +
+                generateAuthSuccessResponseFor(session)
+      )
+    } else {
+      return URI.create(
+        "${session.authRequest.redirectionURI}" +
+                fragmentOrQuery(session) +
+                "error=invalid_request" +
+                "&error_description=${URLEncoder.encode(errorDescriptionFor(verificationResult.siopResponseVerificationResult!!), StandardCharsets.UTF_8)}" +
+                "&state=${session.authRequest.state}"
       )
     }
   }

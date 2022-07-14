@@ -11,12 +11,11 @@ import java.math.BigInteger
 
 object  NFTManager  {
 
-   fun nftOwnershipVerification(sessionId: String, account: String): Boolean {
-       val session= OIDCManager.getOIDCSession(sessionId)
-       val balance= NftService.balanceOf(session?.NFTClaim?.nftClaim?.chain!!,
-           session.NFTClaim.nftClaim.smartContractAddress!!, account)
-       return if (balance!!.compareTo(BigInteger("0")) == 1) true else false
-  }
+    fun verifyNftOwnershipResponse(sessionId: String, account: String) : NftResponseVerificationResult{
+        val result= nftCollectionOwnershipVerification(sessionId, account)
+        val nftResponseVerificationResult= NftResponseVerificationResult(account, sessionId, result)
+        return nftResponseVerificationResult
+    }
 
     fun getNFTClaims(authRequest: AuthorizationRequest): NFTClaims {
         val claims =
@@ -33,6 +32,13 @@ object  NFTManager  {
 
     fun generateNftClaim(authRequest: AuthorizationRequest): NFTClaims {
         return getNFTClaims(authRequest)
+    }
+
+    private fun nftCollectionOwnershipVerification(sessionId: String, account: String): Boolean {
+        val session= OIDCManager.getOIDCSession(sessionId)
+        val balance= NftService.balanceOf(session?.NFTClaim?.nftClaim?.chain!!,
+            session.NFTClaim.nftClaim.smartContractAddress!!, account)
+        return if (balance!!.compareTo(BigInteger("0")) == 1) true else false
     }
 
 }

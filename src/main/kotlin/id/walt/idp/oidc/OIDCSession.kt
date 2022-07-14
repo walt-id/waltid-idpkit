@@ -12,5 +12,5 @@ data class OIDCSession (
   val vpTokenClaim: VpTokenClaim?= null,
   val NFTClaim: NFTClaims?= null,
   val wallet: WalletConfiguration,
-  var verificationResult: SIOPResponseVerificationResult? = null
+  var verificationResult: ResponseVerificationResult? = null
     )
