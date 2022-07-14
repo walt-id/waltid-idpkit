@@ -1,10 +1,15 @@
 {
-  "externalUrl": "http://172.19.0.1:8081",
+  "externalUrl": "http://localhost:8080",
   "clients": {
     "keycloak": {
       "clientId": "keycloak",
       "clientSecret": "keycloak",
       "redirectUris": [ "http://localhost:8082/realms/master/broker/waltid-idpkit/endpoint" ]
+    },
+    "idp-client": {
+      "clientId": "idp-client",
+      "clientSecret": "idp-client-secret",
+      "redirectUris": [ "http://localhost:1234/code-flow-identityserver/sample.html", "http://localhost:1234/code-flow-identityserver/sample-popup-signin.html" ]
     }
   },
   "claimMappings": {

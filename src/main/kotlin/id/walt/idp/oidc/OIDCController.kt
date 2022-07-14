@@ -2,9 +2,9 @@ package id.walt.idp.oidc
 
 import com.nimbusds.jose.jwk.JWKSet
 import com.nimbusds.oauth2.sdk.*
+import com.nimbusds.oauth2.sdk.client.ClientInformation
 import com.nimbusds.oauth2.sdk.http.ServletUtils
 import com.nimbusds.openid.connect.sdk.op.OIDCProviderMetadata
-import id.walt.idp.config.IDPClient
 import id.walt.idp.config.IDPConfig
 import io.javalin.apibuilder.ApiBuilder.*
 import io.javalin.core.security.RouteRole
@@ -96,8 +96,8 @@ object OIDCController {
     return OIDCManager.authorizeClient(clientCreds.username, clientCreds.password)
   }
 
-  private fun getIDPClient(ctx: Context): IDPClient {
-    return IDPConfig.config.clients?.get(ctx.basicAuthCredentials().username) ?: throw BadRequestResponse("Invalid client id")
+  private fun getIDPClient(ctx: Context): ClientInformation {
+    return OIDCClientRegistry.getClient(ctx.basicAuthCredentials().username).orElseThrow { BadRequestResponse("Invalid client id") }
   }
 
   fun accessControl(ctx: Context, routeRoles: MutableSet<RouteRole>): Boolean {
@@ -117,7 +117,7 @@ object OIDCController {
   private fun pushedAuthorizationRequest(ctx: Context) {
     val authReq = AuthorizationRequest.parse(ServletUtils.createHTTPRequest(ctx.req))
     val idpClient = getIDPClient(ctx)
-    if(!OIDCManager.verifyClientRedirectUri(idpClient.clientId, authReq.redirectionURI.toString())) throw ForbiddenResponse("redirect_uri not allowed for client")
+    if(!OIDCManager.verifyClientRedirectUri(idpClient.id.value, authReq.redirectionURI.toString())) throw ForbiddenResponse("redirect_uri not allowed for client")
     val oidcSession = OIDCManager.initOIDCSession(authReq)
     ctx.status(HttpCode.CREATED).json(PushedAuthorizationSuccessResponse(URI.create("urn:ietf:params:oauth:request_uri:${oidcSession.id}"), OIDCManager.EXPIRATION_TIME.seconds).toJSONObject())
   }
@@ -142,7 +142,7 @@ object OIDCController {
     val code = (tokenReq.authorizationGrant as AuthorizationCodeGrant).authorizationCode.value
     val redirectUri = (tokenReq.authorizationGrant as AuthorizationCodeGrant).redirectionURI.toString()
     val idpClient = getIDPClient(ctx)
-    if(!OIDCManager.verifyClientRedirectUri(idpClient.clientId, redirectUri)) throw ForbiddenResponse("redirect_uri not allowed for client")
+    if(!OIDCManager.verifyClientRedirectUri(idpClient.id.value, redirectUri)) throw ForbiddenResponse("redirect_uri not allowed for client")
     ctx.json(
       OIDCManager.getTokensFor(code, redirectUri).toJSONObject()
     )

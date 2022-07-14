@@ -3,14 +3,16 @@ package id.walt.idp
 import com.nimbusds.oauth2.sdk.*
 import com.nimbusds.oauth2.sdk.auth.ClientSecretBasic
 import com.nimbusds.oauth2.sdk.auth.Secret
+import com.nimbusds.oauth2.sdk.client.ClientInformation
+import com.nimbusds.oauth2.sdk.client.ClientMetadata
 import com.nimbusds.oauth2.sdk.id.ClientID
 import com.nimbusds.oauth2.sdk.id.Issuer
 import com.nimbusds.oauth2.sdk.id.State
 import com.nimbusds.openid.connect.sdk.*
 import com.nimbusds.openid.connect.sdk.op.OIDCProviderMetadata
 import id.walt.custodian.Custodian
-import id.walt.idp.config.IDPClient
 import id.walt.idp.config.IDPConfig
+import id.walt.idp.oidc.OIDCClientRegistry
 import id.walt.idp.rest.IDPRestAPI
 import id.walt.model.DidMethod
 import id.walt.model.dif.InputDescriptor
@@ -46,6 +48,7 @@ import io.kotest.matchers.string.shouldContain
 import io.mockk.every
 import io.mockk.mockkObject
 import java.net.URI
+import java.util.*
 
 class OIDCTest: AnnotationSpec() {
 
@@ -61,8 +64,13 @@ class OIDCTest: AnnotationSpec() {
     ServiceMatrix("service-matrix.properties")
     mockkObject(IDPConfig)
     mockkObject(VerifierConfig)
-    every { IDPConfig.config } returns IDPConfig(externalUrl = "http://localhost:8080", "", claimMappings = TEST_CLAIM_MAPPINGS, clients = mapOf(CLIENT_ID to IDPClient(CLIENT_ID, CLIENT_SECRET, setOf(APP_REDIRECT.toString()))))
+    mockkObject(OIDCClientRegistry)
+    every { IDPConfig.config } returns IDPConfig(externalUrl = "http://localhost:8080", "", claimMappings = TEST_CLAIM_MAPPINGS)
     every { VerifierConfig.config } returns VerifierConfig("http://localhost:8080", "http://localhost:8080/api/siop")
+    every { OIDCClientRegistry.load(CLIENT_ID) } returns Optional.of(ClientInformation(ClientID(CLIENT_ID), Date(),
+      ClientMetadata().apply {
+        redirectionURI = APP_REDIRECT
+    }, Secret(CLIENT_SECRET)))
     DID = DidService.create(DidMethod.key)
     VC = Signatory.getService().issue("VerifiableId", ProofConfig(DID, DID, proofType = ProofType.LD_PROOF))
     IDPRestAPI.start()

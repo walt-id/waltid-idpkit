@@ -2,9 +2,7 @@ package id.walt.idp
 
 import com.github.ajalt.clikt.core.subcommands
 import id.walt.cli.*
-import id.walt.idp.cli.ConfigCmd
-import id.walt.idp.cli.IDPCmd
-import id.walt.idp.cli.RunCmd
+import id.walt.idp.cli.*
 import id.walt.servicematrix.ServiceMatrix
 import id.walt.servicematrix.ServiceRegistry
 import id.walt.services.context.ContextManager
@@ -53,6 +51,12 @@ fun main(args: Array<String>) {
           VcTemplatesExportCommand()
         ),
         VcImportCommand()
+      ),
+      ClientRegistryCmd().subcommands(
+        RegisterClientCmd(),
+        ListClientCmd(),
+        GetClientCmd(),
+        RemoveClientCmd()
       )
     )
   ).main(args)

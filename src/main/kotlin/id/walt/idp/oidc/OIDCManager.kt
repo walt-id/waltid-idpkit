@@ -6,12 +6,16 @@ import com.auth0.jwt.exceptions.JWTDecodeException
 import com.auth0.jwt.interfaces.DecodedJWT
 import com.google.common.cache.Cache
 import com.google.common.cache.CacheBuilder
+import com.google.common.cache.LoadingCache
 import com.jayway.jsonpath.JsonPath
 import com.nimbusds.jose.jwk.JWK
 import com.nimbusds.jose.jwk.JWKSet
 import com.nimbusds.jwt.JWTClaimsSet
 import com.nimbusds.oauth2.sdk.*
 import com.nimbusds.oauth2.sdk.auth.ClientAuthenticationMethod
+import com.nimbusds.oauth2.sdk.client.ClientInformation
+import com.nimbusds.oauth2.sdk.client.ClientMetadata
+import com.nimbusds.oauth2.sdk.client.ClientRegistrationResponse
 import com.nimbusds.oauth2.sdk.id.Issuer
 import com.nimbusds.oauth2.sdk.token.AccessToken
 import com.nimbusds.oauth2.sdk.token.BearerAccessToken
@@ -21,6 +25,7 @@ import com.nimbusds.openid.connect.sdk.claims.UserInfo
 import com.nimbusds.openid.connect.sdk.op.OIDCProviderMetadata
 import com.nimbusds.openid.connect.sdk.token.OIDCTokens
 import id.walt.WALTID_DATA_ROOT
+import id.walt.common.client
 import id.walt.crypto.KeyAlgorithm
 import id.walt.crypto.KeyId
 import id.walt.idp.IDPManager
@@ -143,6 +148,14 @@ object OIDCManager : IDPManager {
     sessionCache.put(session.id, session)
   }
 
+  fun checkClientCompatibility(clientMetadata: ClientMetadata): Boolean {
+    val oidcMeta = oidcProviderMetadata
+    return clientMetadata.scope?.all { oidcMeta.scopes.contains(it) } ?: true &&
+           clientMetadata.grantTypes?.all { oidcMeta.grantTypes.contains(it) } ?: true &&
+           clientMetadata.responseTypes?.all { oidcMeta.responseTypes.contains(it) } ?: true &&
+           clientMetadata.tokenEndpointAuthMethod?.let { oidcMeta.tokenEndpointAuthMethods.contains(it) } ?: true
+  }
+
   private const val oidcApiPath: String = "api/oidc"
   private val oidcApiUrl: String get() = "${IDPConfig.config.externalUrl}/$oidcApiPath"
 
@@ -218,15 +231,15 @@ object OIDCManager : IDPManager {
   )
 
   fun authorizeClient(clientID: String, clientSecret: String): Boolean {
-    return IDPConfig.config.clients?.get(clientID)?.let { idpClient ->
-      idpClient.clientId == clientID && idpClient.clientSecret == clientSecret
-    } ?: false
+    return OIDCClientRegistry.getClient(clientID).map { clientInfo ->
+      clientInfo.id.value == clientID && clientInfo.secret.value == clientSecret && !clientInfo.secret.expired()
+    }.orElse(false)
   }
 
   fun verifyClientRedirectUri(clientID: String, redirectUri: String): Boolean {
-    return IDPConfig.config.clients?.get(clientID)?.let { idpClient ->
-      idpClient.clientId == clientID && (idpClient.redirectUris?.contains(redirectUri) ?: idpClient.allowAllRedirectUris)
-    } ?: false
+    return OIDCClientRegistry.getClient(clientID).map { clientInfo ->
+      clientInfo.id.value == clientID && (clientInfo.metadata.redirectionURIStrings.contains(redirectUri) || clientInfo.metadata.customFields[OIDCClientRegistry.ALL_REDIRECT_URIS]?.toString().toBoolean())
+    }.orElse(false)
   }
 
   fun decodeAccessToken(decodedJWT: DecodedJWT): OIDCSession {

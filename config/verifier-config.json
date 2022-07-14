@@ -1,10 +1,15 @@
 {
-  "verifierUiUrl": "http://172.19.0.1:8081",
-  "verifierApiUrl": "http://172.19.0.1:8081/api/siop",
+  "verifierUiUrl": "http://localhost:8080",
+  "verifierApiUrl": "http://localhost:8080/api/siop",
+  "additionalPolicies": [
+    {
+      "policy": "MinAgePolicy"
+    }
+  ],
   "wallets": {
     "walt.id": {
       "id": "walt.id",
-      "url": "http://localhost:3000",
+      "url": "https://wallet.walt-test.cloud",
       "presentPath": "api/wallet/siopv2/initPresentation/",
       "receivePath" : "api/wallet/siopv2/initPassiveIssuance/",
       "description": "walt.id web wallet"

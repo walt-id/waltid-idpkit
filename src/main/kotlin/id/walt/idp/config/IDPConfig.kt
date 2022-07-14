@@ -12,8 +12,7 @@ import java.io.File
 data class IDPConfig (
   @ExternalHostnameUrl val externalUrl: String = "http://localhost:6000",
   val keyId: String = "",
-  val claimMappings: ClaimMappings? = null,
-  val clients: Map<String, IDPClient>? = null
+  val claimMappings: ClaimMappings? = null
     ) {
   companion object {
     val CONFIG_FILE = "${id.walt.WALTID_DATA_ROOT}/config/idp-config.json"
