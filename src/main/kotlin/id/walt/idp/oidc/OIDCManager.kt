@@ -287,11 +287,15 @@ object OIDCManager : IDPManager {
                 generateAuthSuccessResponseFor(session)
       )
     } else {
+      val error= when(verificationResult.siopResponseVerificationResult){
+        null-> "You don't have a NFT in our collection"
+        else -> errorDescriptionFor(verificationResult.siopResponseVerificationResult!!)
+      }
       return URI.create(
         "${session.authRequest.redirectionURI}" +
                 fragmentOrQuery(session) +
                 "error=invalid_request" +
-                "&error_description=${URLEncoder.encode(errorDescriptionFor(verificationResult.siopResponseVerificationResult!!), StandardCharsets.UTF_8)}" +
+                "&error_description=${URLEncoder.encode(error, StandardCharsets.UTF_8)}" +
                 "&state=${session.authRequest.state}"
       )
     }

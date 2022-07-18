@@ -30,16 +30,12 @@ object NFTController {
         }
 
     fun nftVerification(ctx: Context){
-        /*val sessionId = ctx.queryParam("sessionId")
-        val account = ctx.queryParam("account")*/
-        val sessionId = ctx.formParam("sessionId") ?: throw  BadRequestResponse("Session not specified")
-        val account = ctx.formParam("account") ?: throw  BadRequestResponse("Account not specified")
+        val sessionId = ctx.queryParam("sessionId") ?: throw  BadRequestResponse("Session not specified")
+        val account = ctx.queryParam("account") ?: throw  BadRequestResponse("Account not specified")
 
         val result = NFTManager.verifyNftOwnershipResponse(sessionId, account)
         val responseVerificationResult= ResponseVerificationResult(siopResponseVerificationResult = null,result)
         val uri= OIDCManager.continueIDPSessionResponse(sessionId, responseVerificationResult)
-        println(result.valid)
-        //ctx.result("handle callback")
         ctx.status(HttpCode.FOUND).header("Location", uri.toString())
 
     }

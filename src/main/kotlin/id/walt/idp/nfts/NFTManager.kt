@@ -24,7 +24,7 @@ object  NFTManager  {
                 ?.let { JSONParser(-1).parse(it) as JSONObject }
                 ?.let { when(it.containsKey("nftClaim") ) {
                     true -> it.toJSONString()
-                    else -> it.get("id_token")?.toString() // EBSI WCT: vp_token is wrongly (?) contained inside id_token object
+                    else -> it.get("id_token")?.toString()
                 }}
                 ?.let { klaxon.parse<NFTClaims>(it) } ?: NFTClaims()
         return claims
