@@ -1,5 +1,6 @@
 package id.walt.idp.rest
 
+import id.walt.idp.nfts.NFTController
 import id.walt.idp.oidc.OIDCController
 import id.walt.verifier.backend.VerifierController
 import id.walt.webwallet.backend.rest.RestAPI
@@ -16,6 +17,9 @@ object IDPRestAPI {
         }
         ApiBuilder.path("siop") {
           VerifierController.routes
+        }
+        ApiBuilder.path("nft") {
+          NFTController.routes
         }
       }
     }._conf.addStaticFiles { staticFiles ->

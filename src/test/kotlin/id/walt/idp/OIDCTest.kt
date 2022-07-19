@@ -12,7 +12,10 @@ import com.nimbusds.openid.connect.sdk.*
 import com.nimbusds.openid.connect.sdk.op.OIDCProviderMetadata
 import id.walt.custodian.Custodian
 import id.walt.idp.config.IDPConfig
-import id.walt.idp.oidc.OIDCClientRegistry
+import id.walt.idp.nfts.NFTClaim
+import id.walt.idp.nfts.NFTClaims
+import id.walt.idp.oidc.OIDCManager
+import id.walt.idp.oidc.OIDCClientRegistry main
 import id.walt.idp.rest.IDPRestAPI
 import id.walt.model.DidMethod
 import id.walt.model.dif.InputDescriptor
@@ -22,6 +25,7 @@ import id.walt.model.oidc.OIDCProvider
 import id.walt.model.oidc.SIOPv2Request
 import id.walt.model.oidc.VCClaims
 import id.walt.model.oidc.VpTokenClaim
+import id.walt.nftkit.services.Chain
 import id.walt.servicematrix.ServiceMatrix
 import id.walt.services.did.DidService
 import id.walt.services.oidc.OIDC4VPService
@@ -256,4 +260,5 @@ class OIDCTest: AnnotationSpec() {
     userInfoResponse.toSuccessResponse().userInfo.gender.value shouldBe verifiableId.credentialSubject!!.gender
 
   }
+
 }

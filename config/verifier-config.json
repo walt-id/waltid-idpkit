@@ -13,6 +13,13 @@
       "presentPath": "api/wallet/siopv2/initPresentation/",
       "receivePath" : "api/wallet/siopv2/initPassiveIssuance/",
       "description": "walt.id web wallet"
+    },
+    "NFTswallet": {
+        "id": "NFTs-walt.id",
+        "url": "http://localhost:3000",
+      "presentPath": "",
+      "receivePath" : "",
+        "description": "NFTs walt.id web wallet"
     }
   }
 }
