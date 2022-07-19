@@ -104,7 +104,7 @@ class OIDCClientRegistrationTest: OIDCTestBase() {
     delResp.statusCode shouldBe  HttpCode.NO_CONTENT.status
 
     val getReq2 = ClientReadRequest(registrationResponse.clientInformation.registrationURI, registrationResponse.clientInformation.registrationAccessToken)
-    val getResp2 = getReq.toHTTPRequest().send()
+    val getResp2 = getReq2.toHTTPRequest().send()
     getResp2.statusCode shouldBe HttpCode.UNAUTHORIZED.status
 
   }
