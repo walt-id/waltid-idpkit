@@ -11,5 +11,5 @@ interface IDPManager {
    */
   fun continueIDPSessionForSIOPResponse(sessionId: String, verificationResult: SIOPResponseVerificationResult): URI
 
-  val IDP_TYPE: IDPType
+  val idpType: IDPType
 }

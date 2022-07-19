@@ -4,31 +4,56 @@ import com.auth0.jwt.JWT
 import com.auth0.jwt.algorithms.Algorithm
 import com.auth0.jwt.exceptions.JWTDecodeException
 import com.auth0.jwt.interfaces.DecodedJWT
+import com.google.common.cache.Cache
 import com.google.common.cache.CacheBuilder
+import com.google.common.cache.LoadingCache
 import com.jayway.jsonpath.JsonPath
+import com.nimbusds.jose.jwk.JWK
+import com.nimbusds.jose.jwk.JWKSet
 import com.nimbusds.jwt.JWTClaimsSet
 import com.nimbusds.oauth2.sdk.*
+import com.nimbusds.oauth2.sdk.auth.ClientAuthenticationMethod
+import com.nimbusds.oauth2.sdk.client.ClientInformation
+import com.nimbusds.oauth2.sdk.client.ClientMetadata
+import com.nimbusds.oauth2.sdk.client.ClientRegistrationResponse
 import com.nimbusds.oauth2.sdk.id.Issuer
-import com.nimbusds.oauth2.sdk.token.*
+import com.nimbusds.oauth2.sdk.token.AccessToken
+import com.nimbusds.oauth2.sdk.token.BearerAccessToken
+import com.nimbusds.oauth2.sdk.token.RefreshToken
 import com.nimbusds.openid.connect.sdk.*
 import com.nimbusds.openid.connect.sdk.claims.UserInfo
 import com.nimbusds.openid.connect.sdk.op.OIDCProviderMetadata
 import com.nimbusds.openid.connect.sdk.token.OIDCTokens
+import id.walt.WALTID_DATA_ROOT
+import id.walt.common.client
+import id.walt.crypto.KeyAlgorithm
+import id.walt.crypto.KeyId
 import id.walt.idp.IDPManager
 import id.walt.idp.IDPType
 import id.walt.idp.config.IDPConfig
 import id.walt.idp.nfts.NFTManager
 import id.walt.idp.siop.SIOPState
+import id.walt.idp.util.WaltIdAlgorithm
 import id.walt.model.dif.*
 import id.walt.model.oidc.VpTokenClaim
+import id.walt.services.hkvstore.FileSystemHKVStore
+import id.walt.services.hkvstore.FilesystemStoreConfig
+import id.walt.services.key.KeyFormat
+import id.walt.services.key.KeyService
+import id.walt.services.keystore.HKVKeyStoreService
+import id.walt.services.keystore.KeyType
 import id.walt.services.oidc.OIDCUtils
+import id.walt.services.vcstore.HKVVcStoreService
 import id.walt.verifier.backend.SIOPResponseVerificationResult
 import id.walt.verifier.backend.VerifierConfig
 import id.walt.verifier.backend.VerifierManager
+import id.walt.webwallet.backend.context.UserContext
+import id.walt.webwallet.backend.context.WalletContextManager
 import io.javalin.http.BadRequestResponse
 import io.javalin.http.ForbiddenResponse
 import io.javalin.http.InternalServerErrorResponse
 import javalinjwt.JWTProvider
+import mu.KotlinLogging
 import java.net.URI
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
@@ -38,12 +63,38 @@ import java.util.concurrent.TimeUnit
 
 object OIDCManager : IDPManager {
   val EXPIRATION_TIME: Duration = Duration.ofMinutes(5)
-  val sessionCache = CacheBuilder.newBuilder().expireAfterAccess(EXPIRATION_TIME.seconds, TimeUnit.SECONDS).build<String, OIDCSession>()
+  private val sessionCache: Cache<String, OIDCSession> = CacheBuilder.newBuilder().expireAfterAccess(EXPIRATION_TIME.seconds, TimeUnit.SECONDS).build()
+  private val log = KotlinLogging.logger {}
+
+  val oidcContext = UserContext(
+    contextId = "OIDCContext",
+    hkvStore = FileSystemHKVStore(FilesystemStoreConfig("$WALTID_DATA_ROOT/data/idp")),
+    keyStore = HKVKeyStoreService(),
+    vcStore = HKVVcStoreService()
+  )
+
+  private lateinit var keyId: KeyId
+  private lateinit var jwtAlgorithm: Algorithm
+  lateinit var keySet: JWKSet
+
+  init {
+    WalletContextManager.runWith(oidcContext) {
+      keyId = if(IDPConfig.config.keyId.isNotEmpty()) {
+        KeyId(IDPConfig.config.keyId)
+      } else {
+        KeyService.getService().listKeys().map { k -> k.keyId }.firstOrNull()
+          ?: KeyService.getService().generate(KeyAlgorithm.RSA)
+      }
+      val key = KeyService.getService().load(keyId.id)
+      keySet = JWKSet(JWK.parse(KeyService.getService().export(keyId.id, KeyFormat.JWK, KeyType.PUBLIC)))
+      jwtAlgorithm = WaltIdAlgorithm(keyId, oidcContext, key.algorithm)
+      log.info("Using IDP key: {}", keyId)
+    }
+  }
 
   val oidcProviderMetadata get() = OIDCProviderMetadata(
     Issuer(oidcApiUrl),
     listOf(SubjectType.PUBLIC),
-    // TODO: provide this endpoint !!
     URI.create("$oidcApiUrl/jwkSet")
   ).apply {
     authorizationEndpointURI = URI.create("$oidcApiUrl/authorize")
@@ -51,7 +102,7 @@ object OIDCManager : IDPManager {
     tokenEndpointURI = URI.create("$oidcApiUrl/token")
     userInfoEndpointURI = URI.create("$oidcApiUrl/userInfo")
     grantTypes = listOf(GrantType.AUTHORIZATION_CODE)
-    responseTypes = listOf(ResponseType.CODE)
+    responseTypes = listOf(ResponseType.CODE, ResponseType.IDTOKEN, ResponseType.TOKEN, ResponseType.CODE_IDTOKEN, ResponseType.CODE_TOKEN, ResponseType.IDTOKEN_TOKEN, ResponseType.CODE_IDTOKEN_TOKEN)
     claims = listOf("vp_token", *(IDPConfig.config.claimMappings?.mappings?.map { m -> m.claim }?.toSet() ?: setOf()).toTypedArray())
     scopes = Scope("openid", *(IDPConfig.config.claimMappings?.mappings?.flatMap { m -> m.scope }?.toSet() ?: setOf()).toTypedArray())
     setCustomParameter("wallets_supported", VerifierConfig.config.wallets.values.map { wallet ->
@@ -60,9 +111,10 @@ object OIDCManager : IDPManager {
         "description" to wallet.description
       )
     })
+    tokenEndpointAuthMethods = listOf(ClientAuthenticationMethod.CLIENT_SECRET_BASIC)
   }
 
-  fun generateVpTokenClaim(authRequest: AuthorizationRequest): VpTokenClaim {
+  private fun generateVpTokenClaim(authRequest: AuthorizationRequest): VpTokenClaim {
     return OIDCUtils.getVCClaims(authRequest).vp_token ?:
       VpTokenClaim(PresentationDefinition(
         id = "1",
@@ -100,17 +152,25 @@ object OIDCManager : IDPManager {
     sessionCache.put(session.id, session)
   }
 
-  val oidcApiPath: String = "api/oidc"
-  val oidcApiUrl: String get() = "${IDPConfig.config.externalUrl}/$oidcApiPath"
+  fun checkClientCompatibility(clientMetadata: ClientMetadata): Boolean {
+    val oidcMeta = oidcProviderMetadata
+    return clientMetadata.scope?.all { oidcMeta.scopes.contains(it) } ?: true &&
+           clientMetadata.grantTypes?.all { oidcMeta.grantTypes.contains(it) } ?: true &&
+           clientMetadata.responseTypes?.all { oidcMeta.responseTypes.contains(it) } ?: true &&
+           clientMetadata.tokenEndpointAuthMethod?.let { oidcMeta.tokenEndpointAuthMethods.contains(it) } ?: true
+  }
+
+  private const val oidcApiPath: String = "api/oidc"
+  private val oidcApiUrl: String get() = "${IDPConfig.config.externalUrl}/$oidcApiPath"
 
   fun getWalletRedirectionUri(session: OIDCSession): URI {
-    /*val siopReq = VerifierManager.getService().newRequest(
+
+    val siopReq = VerifierManager.getService().newRequest(
       tokenClaim = session.vpTokenClaim!!,
       state = SIOPState(IDP_TYPE, session.id).encode()
-    )*/
-    //return URI.create("${session.wallet.url}/${session.wallet.presentPath}?${siopReq.toUriQueryString()}")
+    )
+    return URI.create("${session.wallet.url}/${session.wallet.presentPath}?${siopReq.toUriQueryString()}")
     return URI.create("${session.wallet.url}?session=${session.id}&redirect_uri=http://localhost:8080/api/nft/callback")
-    //return URI.create("http://localhost:3000?session=${session.id}&redirect_uri=http://localhost:8080/api/nft/callback")
   }
 
   fun getIdTokenFor(session: OIDCSession): String {
@@ -138,12 +198,10 @@ object OIDCManager : IDPManager {
     )
   }
 
-  val jwtAlgorithm = Algorithm.HMAC256("FOO") // TODO: set algorithm and key according to key config
-
   val accessTokenProvider = JWTProvider(
     jwtAlgorithm,
     { session: OIDCSession, alg: Algorithm? ->
-      JWT.create().withSubject(session.id).withAudience(session.authRequest.redirectionURI.toString()).sign(alg)
+      JWT.create().withKeyId(keyId.id).withSubject(session.id).withAudience(session.authRequest.clientID.value).sign(alg)
     },
     JWT.require(jwtAlgorithm).build()
   )
@@ -152,10 +210,13 @@ object OIDCManager : IDPManager {
     jwtAlgorithm,
     { session: OIDCSession, alg: Algorithm? ->
       JWT.create()
+        .withKeyId(keyId.id)
         .withSubject(session.verificationResult!!.siopResponseVerificationResult!!.subject)
-        .withIssuer(IDPConfig.config.externalUrl)
+        .withIssuer("${IDPConfig.config.externalUrl}/api/oidc")
         .withIssuedAt(Date())
+        .withAudience(session.authRequest.clientID.value)
         .apply {
+          session.authRequest.customParameters["nonce"]?.firstOrNull()?.let { withClaim("nonce", it) }
           if(session.authRequest.responseType == ResponseType.IDTOKEN) {
             // add full user info to id_token, if implicit flow, with id_token only
             withPayload(getUserInfo(session).toJSONObject())
@@ -175,13 +236,25 @@ object OIDCManager : IDPManager {
     JWT.require(jwtAlgorithm).build()
   )
 
+  fun authorizeClient(clientID: String, clientSecret: String): Boolean {
+    return OIDCClientRegistry.getClient(clientID).map { clientInfo ->
+      clientInfo.id.value == clientID && clientInfo.secret.value == clientSecret && !clientInfo.secret.expired()
+    }.orElse(false)
+  }
+
+  fun verifyClientRedirectUri(clientID: String, redirectUri: String): Boolean {
+    return OIDCClientRegistry.getClient(clientID).map { clientInfo ->
+      clientInfo.id.value == clientID && (clientInfo.metadata.redirectionURIStrings.contains(redirectUri) || clientInfo.metadata.customFields[OIDCClientRegistry.ALL_REDIRECT_URIS]?.toString().toBoolean())
+    }.orElse(false)
+  }
+
   fun decodeAccessToken(decodedJWT: DecodedJWT): OIDCSession {
     val session = sessionCache.getIfPresent(decodedJWT.subject) ?: throw JWTDecodeException("Invalid oidc session id")
-    if(!decodedJWT.audience.contains(session.authRequest.redirectionURI.toString())) throw JWTDecodeException("Invalid audience for session")
+    if(!decodedJWT.audience.contains(session.authRequest.clientID.value)) throw JWTDecodeException("Invalid audience for session")
     return session
   }
 
-  fun populateUserInfoClaims(claimBuilder: JWTClaimsSet.Builder, session: OIDCSession) {
+  private fun populateUserInfoClaims(claimBuilder: JWTClaimsSet.Builder, session: OIDCSession) {
     //update to add nft metadata in token user claims
     if(session.verificationResult?.siopResponseVerificationResult!=null && session.verificationResult?.siopResponseVerificationResult?.vp_token == null) throw BadRequestResponse("No vp_token received from SIOP response")
 
@@ -216,6 +289,15 @@ object OIDCManager : IDPManager {
     if(session.verificationResult?.nftresponseVerificationResult != null) {
       claimBuilder.claim("account", session.verificationResult?.nftresponseVerificationResult!!.account)
     }
+    // populate claims based on OIDC Scope, and/or claims requested in auth request
+    (session.authRequest.scope?.flatMap { s -> IDPConfig.config.claimMappings?.mappingsForScope(s) ?: listOf() } ?: listOf())
+      .plus(session.authRequest.customParameters["claims"]?.flatMap { c -> IDPConfig.config.claimMappings?.mappingsForClaim(c) ?: listOf() } ?: listOf())
+      .toSet().forEach { m ->
+        val credential = session.verificationResult!!.vp_token!!.verifiableCredential.firstOrNull{ c -> c.type.contains(m.credentialType) } ?: throw BadRequestResponse("vp_token from SIOP response doesn't contain required credentials")
+        val jp = JsonPath.parse(credential.json)
+        val value = m.valuePath.split(" ").map { jp.read<Any>(it) }.joinToString(" ")
+        claimBuilder.claim(m.claim, value)
+      }
   }
 
   fun getUserInfo(session: OIDCSession): UserInfo {
@@ -232,19 +314,19 @@ object OIDCManager : IDPManager {
     verificationResult.request ?: return "No SIOP request defined"
     if(!verificationResult.id_token_valid) return "Invalid id_token"
     val vpVerificationResult = verificationResult.verification_result ?: return "Verifiable presentation not verified"
-    if(!vpVerificationResult.valid) return "Verifiable presentation invalid: ${vpVerificationResult}"
+    if(!vpVerificationResult.valid) return "Verifiable presentation invalid: $vpVerificationResult"
     return "Invalid SIOP response verification result"
   }
 
   private fun generateAuthSuccessResponseFor(session: OIDCSession): String {
-    return session.authRequest.responseType.map { rt ->
-      when(rt) {
+    return session.authRequest.responseType.joinToString("&", postfix = "&state=${session.authRequest.state}") { rt ->
+      when (rt) {
         ResponseType.Value.CODE -> "code=${session.id}"
         OIDCResponseTypeValue.ID_TOKEN -> "id_token=${getIdTokenFor(session)}"
         ResponseType.Value.TOKEN -> "access_token=${getAccessTokenFor(session).value}"
         else -> throw BadRequestResponse("Unsupported response_type: ${rt.value}")
       }
-    }.joinToString("&", postfix = "&state=${session.authRequest.state}")
+    }
   }
 
   private fun fragmentOrQuery(session: OIDCSession) =

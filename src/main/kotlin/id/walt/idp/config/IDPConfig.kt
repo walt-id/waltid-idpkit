@@ -1,6 +1,9 @@
 package id.walt.idp.config
 
 import com.beust.klaxon.Klaxon
+import com.nimbusds.oauth2.sdk.id.ClientID
+import com.nimbusds.openid.connect.sdk.rp.OIDCClientInformation
+import com.nimbusds.openid.connect.sdk.rp.OIDCClientMetadata
 import id.walt.idp.oidc.ClaimMappings
 import id.walt.webwallet.backend.config.ExternalHostnameUrl
 import id.walt.webwallet.backend.config.externalHostnameUrlValueConverter
