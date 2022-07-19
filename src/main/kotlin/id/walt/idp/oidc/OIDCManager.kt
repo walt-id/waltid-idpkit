@@ -65,6 +65,10 @@ object OIDCManager : IDPManager {
   val EXPIRATION_TIME: Duration = Duration.ofMinutes(5)
   private val sessionCache: Cache<String, OIDCSession> = CacheBuilder.newBuilder().expireAfterAccess(EXPIRATION_TIME.seconds, TimeUnit.SECONDS).build()
   private val log = KotlinLogging.logger {}
+  enum class AuthorizationMode {
+    SIOP,
+    NFT,
+  }
 
   val oidcContext
     get() = ContextFactory.getContextFor(ContextId.OIDC)
@@ -127,10 +131,13 @@ object OIDCManager : IDPManager {
     val vpTokenClaim = generateVpTokenClaim(authRequest)
     val nftClaim = NFTManager.generateNftClaim(authRequest)
     val walletId: String
+    val authorizationMode: AuthorizationMode
     if(nftClaim.nftClaim != null) {
        walletId = "NFTswallet"
+      authorizationMode= AuthorizationMode.NFT
     } else {
        walletId = authRequest.customParameters["walletId"]?.firstOrNull() ?: VerifierConfig.config.wallets.values.map { wc -> wc.id }.firstOrNull() ?: throw InternalServerErrorResponse("Known wallets not configured")
+      authorizationMode= AuthorizationMode.SIOP
     }
 
     val wallet = VerifierConfig.config.wallets[walletId] ?: throw BadRequestResponse("No wallet configuration found for given walletId")
@@ -138,6 +145,7 @@ object OIDCManager : IDPManager {
     return OIDCSession(
       id = UUID.randomUUID().toString(),
       authRequest = authRequest,
+      authorizationMode= authorizationMode,
       vpTokenClaim = vpTokenClaim,
       NFTClaim= nftClaim,
       wallet = wallet
@@ -167,7 +175,7 @@ object OIDCManager : IDPManager {
 
   fun getWalletRedirectionUri(session: OIDCSession): URI {
 
-    if(session.vpTokenClaim != null){
+    if(session.authorizationMode.equals(AuthorizationMode.SIOP)){
       val siopReq = VerifierManager.getService().newRequest(
         tokenClaim = session.vpTokenClaim!!,
         state = SIOPState(idpType, session.id).encode()
@@ -294,8 +302,8 @@ object OIDCManager : IDPManager {
   }
 
   fun getUserInfo(session: OIDCSession): UserInfo {
-    val verificationResult = session.verificationResult ?: throw BadRequestResponse("SIOP request not yet verified")
-    val claimBuilder = JWTClaimsSet.Builder().subject(verificationResult.siopResponseVerificationResult!!.subject)
+    val verificationResult = session.verificationResult?.siopResponseVerificationResult ?: throw BadRequestResponse("SIOP request not yet verified")
+    val claimBuilder = JWTClaimsSet.Builder().subject(verificationResult.subject)
     populateUserInfoClaims(claimBuilder, session)
     return UserInfo(
       claimBuilder.build()
@@ -362,9 +370,9 @@ object OIDCManager : IDPManager {
                 generateAuthSuccessResponseFor(session)
       )
     } else {
-      val error= when(verificationResult.siopResponseVerificationResult){
-        null-> "You don't have a NFT in our collection"
-        else -> errorDescriptionFor(verificationResult.siopResponseVerificationResult!!)
+      val error= when(session.authorizationMode){
+        AuthorizationMode.NFT-> "You don't have a NFT in our collection"
+        AuthorizationMode.SIOP -> errorDescriptionFor(verificationResult.siopResponseVerificationResult!!)
       }
       return URI.create(
         "${session.authRequest.redirectionURI}" +
