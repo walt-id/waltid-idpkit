@@ -14,12 +14,10 @@ import id.walt.WALTID_DATA_ROOT
 import id.walt.custodian.Custodian
 import id.walt.idp.config.IDPConfig
 import id.walt.idp.context.ContextFactory
-import id.walt.idp.oidc.OIDCClientRegistry
-import id.walt.idp.oidc.OIDCManager
 import id.walt.idp.nfts.NFTClaim
 import id.walt.idp.nfts.NFTClaims
 import id.walt.idp.oidc.OIDCManager
-import id.walt.idp.oidc.OIDCClientRegistry main
+import id.walt.idp.oidc.OIDCClientRegistry
 import id.walt.idp.rest.IDPRestAPI
 import id.walt.model.DidMethod
 import id.walt.model.dif.InputDescriptor

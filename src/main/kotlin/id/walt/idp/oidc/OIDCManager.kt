@@ -127,12 +127,12 @@ object OIDCManager : IDPManager {
     val vpTokenClaim = generateVpTokenClaim(authRequest)
     val nftClaim = NFTManager.generateNftClaim(authRequest)
     val walletId: String
-    if(nftClaim != null){
+    if(nftClaim.nftClaim != null) {
        walletId = "NFTswallet"
-    }else{
+    } else {
        walletId = authRequest.customParameters["walletId"]?.firstOrNull() ?: VerifierConfig.config.wallets.values.map { wc -> wc.id }.firstOrNull() ?: throw InternalServerErrorResponse("Known wallets not configured")
-
     }
+
     val wallet = VerifierConfig.config.wallets[walletId] ?: throw BadRequestResponse("No wallet configuration found for given walletId")
 
     return OIDCSession(
