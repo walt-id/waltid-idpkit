@@ -30,7 +30,8 @@ class RegisterClientCmd: CliktCommand(name = "register", help = "Register new OI
       val clientInfo = if (updateClient.isNullOrEmpty()) {
         OIDCClientRegistry.registerClient(clientMetadata, allRedirectUris)
       } else {
-        OIDCClientRegistry.updateClient(updateClient!!, clientMetadata, allRedirectUris)
+        val clientInfo = OIDCClientRegistry.getClient(updateClient!!).orElseThrow { Exception("Client with given ID not found") }
+        OIDCClientRegistry.updateClient(clientInfo, clientMetadata, allRedirectUris)
       }
       println("Created client registration:")
       println("client_id: ${clientInfo.id.value}")
@@ -66,7 +67,8 @@ class RemoveClientCmd: CliktCommand(name = "remove", help = "Remove OIDC client"
   val clientId: String by option("-i", "--id", help = "Client ID").required()
   override fun run() {
     try {
-      OIDCClientRegistry.unregisterClient(clientId)
+      val clientInfo = OIDCClientRegistry.getClient(clientId!!).orElseThrow { Exception("Client with given ID not found") }
+      OIDCClientRegistry.unregisterClient(clientInfo)
       println("Client removed")
     } catch (exc: Exception) {
       println("Error removing registered client: ${exc.message}")

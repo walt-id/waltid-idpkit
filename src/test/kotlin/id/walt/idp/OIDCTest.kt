@@ -10,9 +10,12 @@ import com.nimbusds.oauth2.sdk.id.Issuer
 import com.nimbusds.oauth2.sdk.id.State
 import com.nimbusds.openid.connect.sdk.*
 import com.nimbusds.openid.connect.sdk.op.OIDCProviderMetadata
+import id.walt.WALTID_DATA_ROOT
 import id.walt.custodian.Custodian
 import id.walt.idp.config.IDPConfig
+import id.walt.idp.context.ContextFactory
 import id.walt.idp.oidc.OIDCClientRegistry
+import id.walt.idp.oidc.OIDCManager
 import id.walt.idp.rest.IDPRestAPI
 import id.walt.model.DidMethod
 import id.walt.model.dif.InputDescriptor
@@ -23,9 +26,18 @@ import id.walt.model.oidc.SIOPv2Request
 import id.walt.model.oidc.VCClaims
 import id.walt.model.oidc.VpTokenClaim
 import id.walt.servicematrix.ServiceMatrix
+import id.walt.servicematrix.ServiceRegistry
+import id.walt.services.context.Context
+import id.walt.services.context.ContextManager
+import id.walt.services.context.WaltIdContext
 import id.walt.services.did.DidService
+import id.walt.services.hkvstore.FileSystemHKVStore
+import id.walt.services.hkvstore.FilesystemStoreConfig
+import id.walt.services.hkvstore.InMemoryHKVStore
+import id.walt.services.keystore.HKVKeyStoreService
 import id.walt.services.oidc.OIDC4VPService
 import id.walt.services.oidc.OIDCUtils
+import id.walt.services.vcstore.HKVVcStoreService
 import id.walt.signatory.ProofConfig
 import id.walt.signatory.ProofType
 import id.walt.signatory.Signatory
@@ -35,6 +47,8 @@ import id.walt.vclib.model.toCredential
 import id.walt.vclib.templates.VcTemplateManager
 import id.walt.verifier.backend.VerifierConfig
 import id.walt.verifier.backend.WalletConfiguration
+import id.walt.webwallet.backend.context.UserContext
+import id.walt.webwallet.backend.context.WalletContextManager
 import io.javalin.http.HttpCode
 import io.kotest.assertions.throwables.shouldNotThrowAny
 import io.kotest.core.spec.style.AnnotationSpec
@@ -50,31 +64,25 @@ import io.mockk.mockkObject
 import java.net.URI
 import java.util.*
 
-class OIDCTest: AnnotationSpec() {
+class OIDCTest: OIDCTestBase() {
 
-  private val OIDC_URI: URI = URI.create("http://localhost:8080/api/oidc")
   private lateinit var DID: String
   private lateinit var VC: String
   private val APP_REDIRECT: URI = URI.create("http://app")
   private val CLIENT_ID = "test-client"
   private val CLIENT_SECRET = "test-secret"
 
-  @BeforeClass
-  fun init() {
-    ServiceMatrix("service-matrix.properties")
-    mockkObject(IDPConfig)
-    mockkObject(VerifierConfig)
+  override fun customInit() {
     mockkObject(OIDCClientRegistry)
-    every { IDPConfig.config } returns IDPConfig(externalUrl = "http://localhost:8080", "", claimMappings = TEST_CLAIM_MAPPINGS)
-    every { VerifierConfig.config } returns VerifierConfig("http://localhost:8080", "http://localhost:8080/api/siop")
     every { OIDCClientRegistry.load(CLIENT_ID) } returns Optional.of(ClientInformation(ClientID(CLIENT_ID), Date(),
       ClientMetadata().apply {
         redirectionURI = APP_REDIRECT
     }, Secret(CLIENT_SECRET)))
+
     DID = DidService.create(DidMethod.key)
     VC = Signatory.getService().issue("VerifiableId", ProofConfig(DID, DID, proofType = ProofType.LD_PROOF))
-    IDPRestAPI.start()
   }
+
 
   private fun simulateAuthReqToAppRedirect(
     authReq: AuthorizationRequest,

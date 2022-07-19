@@ -6,11 +6,11 @@ import com.auth0.jwt.interfaces.DecodedJWT
 import com.nimbusds.jose.util.Base64URL
 import id.walt.crypto.KeyAlgorithm
 import id.walt.crypto.KeyId
+import id.walt.services.context.Context
 import id.walt.services.crypto.CryptoService
-import id.walt.webwallet.backend.context.UserContext
 import id.walt.webwallet.backend.context.WalletContextManager
 
-class WaltIdAlgorithm(private val keyId: KeyId, private val context: UserContext, alg: KeyAlgorithm)
+class WaltIdAlgorithm(private val keyId: KeyId, private val context: Context, alg: KeyAlgorithm)
   : Algorithm(when(alg) {
       KeyAlgorithm.EdDSA_Ed25519 -> "EdDSA"
       KeyAlgorithm.ECDSA_Secp256k1 -> "ES256K"

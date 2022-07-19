@@ -2,9 +2,10 @@ package id.walt.idp.oidc
 
 import com.nimbusds.jose.jwk.JWKSet
 import com.nimbusds.oauth2.sdk.*
-import com.nimbusds.oauth2.sdk.client.ClientInformation
+import com.nimbusds.oauth2.sdk.client.*
 import com.nimbusds.oauth2.sdk.http.ServletUtils
 import com.nimbusds.openid.connect.sdk.op.OIDCProviderMetadata
+import id.walt.common.client
 import id.walt.idp.config.IDPConfig
 import io.javalin.apibuilder.ApiBuilder.*
 import io.javalin.core.security.RouteRole
@@ -83,6 +84,43 @@ object OIDCController {
           ), OIDCAuthorizationRole.ACCESS_TOKEN
         )
       }
+      before("clients", JavalinJWT.createHeaderDecodeHandler(OIDCManager.clientRegistrationTokenProvider))
+      path("clients") {
+        post("register", documented(
+          document().operation {
+            it.summary("Dynamic client registration endpoint")
+              .addTagsItem("OIDC")
+              .operationId("registerClient")
+          }.body<ClientMetadata>()
+            .json<ClientInformation>("200"),
+          OIDCController::registerClient
+        ), OIDCAuthorizationRole.INITIAL_CLIENT_REGISTRATION)
+        put("{clientId}", documented(
+          document().operation {
+            it.summary("Dynamic client configuration endpoint")
+              .addTagsItem("OIDC")
+              .operationId("updateRegisteredClient")
+          }.body<ClientMetadata>()
+            .json<ClientInformation>("200"),
+          OIDCController::updateRegisteredClient
+        ), OIDCAuthorizationRole.CLIENT_REGISTRATION)
+        get("{clientId}", documented(
+          document().operation {
+            it.summary("Read client registration info")
+              .addTagsItem("OIDC")
+              .operationId("getRegisteredClient")
+          }.json<ClientInformation>("200"),
+          OIDCController::getRegisteredClient
+        ), OIDCAuthorizationRole.CLIENT_REGISTRATION)
+        delete("{clientId}", documented(
+          document().operation {
+            it.summary("Delete client registration info")
+              .addTagsItem("OIDC")
+              .operationId("deleteRegisteredClient")
+          }.json<ClientInformation>("200"),
+          OIDCController::deleteRegisteredClient
+        ), OIDCAuthorizationRole.CLIENT_REGISTRATION)
+      }
     }
 
   private val log = KotlinLogging.logger {}
@@ -101,9 +139,12 @@ object OIDCController {
   }
 
   fun accessControl(ctx: Context, routeRoles: MutableSet<RouteRole>): Boolean {
-    return  routeRoles.contains(OIDCAuthorizationRole.UNAUTHORIZED) ||                              // unauthorized endpoints
-            routeRoles.contains(OIDCAuthorizationRole.OIDC_CLIENT) && clientAccessControl(ctx) ||   // endpoints requiring client authentication
-            routeRoles.contains(OIDCAuthorizationRole.ACCESS_TOKEN) && JavalinJWT.containsJWT(ctx)  // endpoints requiring access_token
+  return  routeRoles.contains(OIDCAuthorizationRole.UNAUTHORIZED) ||                                       // unauthorized endpoints
+          routeRoles.contains(OIDCAuthorizationRole.OIDC_CLIENT) && clientAccessControl(ctx) ||            // endpoints requiring client authentication
+          routeRoles.contains(OIDCAuthorizationRole.ACCESS_TOKEN) && JavalinJWT.containsJWT(ctx) ||        // endpoints requiring access_token
+          routeRoles.contains(OIDCAuthorizationRole.CLIENT_REGISTRATION) && JavalinJWT.containsJWT(ctx) || // endpoints requiring client registration token
+          routeRoles.contains(OIDCAuthorizationRole.INITIAL_CLIENT_REGISTRATION)                           // endpoints requiring initial client registration token
+          && (IDPConfig.config.openClientRegistration || JavalinJWT.containsJWT(ctx))
   }
 
   private fun openIdConfiguration(ctx: Context) {
@@ -157,5 +198,71 @@ object OIDCController {
     verificationResult.vp_token ?: throw BadRequestResponse("No vp_token found for session")
 
     ctx.json(OIDCManager.getUserInfo(session).toJSONObject())
+  }
+
+  private fun verifyClientRegistrationAuth(ctx: Context, clientId: String?): Boolean {
+    if(clientId.isNullOrEmpty() && IDPConfig.config.openClientRegistration) {
+      // initial client registration is allowed unauthorized
+      return true
+    }
+
+    val authClientId = JavalinJWT.getDecodedFromContext(ctx).subject
+    if(clientId != null)
+      return clientId == authClientId
+    else
+      return OIDCManager.NEW_CLIENT_REGISTRATION_ID == authClientId
+  }
+
+  private fun registerClient(ctx: Context) {
+    if(verifyClientRegistrationAuth(ctx, null)) {
+      throw ForbiddenResponse("Forbidden")
+    }
+    val clientRegistrationRequest = ClientRegistrationRequest.parse(ServletUtils.createHTTPRequest(ctx.req))
+    try {
+      val clientInfo = OIDCClientRegistry.registerClient(clientRegistrationRequest.clientMetadata, false)
+      ctx.status(HttpCode.CREATED).json(
+        clientInfo.toJSONObject()
+      )
+    } catch (exc: Exception) {
+      ctx.status(HttpCode.BAD_REQUEST).json(RegistrationError.INVALID_CLIENT_METADATA.setDescription(exc.message).toJSONObject())
+    }
+  }
+
+  private fun getRegisteredClient(ctx: Context) {
+    val clientId: String = ctx.pathParam("clientId")
+    if(!verifyClientRegistrationAuth(ctx, clientId)) {
+      throw ForbiddenResponse("Forbidden")
+    }
+    val clientInfo = OIDCClientRegistry.getClient(clientId).orElseThrow { UnauthorizedResponse("Client with the given ID not found.")}
+    ctx.json(clientInfo.toJSONObject())
+  }
+
+  private fun updateRegisteredClient(ctx: Context) {
+    val clientId: String = ctx.pathParam("clientId")
+    if(!verifyClientRegistrationAuth(ctx, clientId)) {
+      throw ForbiddenResponse("Forbidden")
+    }
+    val clientUpdateRequest = ClientUpdateRequest.parse(ServletUtils.createHTTPRequest(ctx.req))
+    if(clientUpdateRequest.clientID.value != clientId) throw BadRequestResponse("Wrong client ID in request body")
+    val clientInfo = OIDCClientRegistry.getClient(clientId).orElseThrow { UnauthorizedResponse("Client with given ID not found.") }
+    if(clientUpdateRequest.clientSecret != null && clientUpdateRequest.clientSecret.value != clientInfo.secret.value) throw BadRequestResponse("Wrong client secret in request body")
+    try {
+      val updatedInfo = OIDCClientRegistry.updateClient(clientInfo, clientUpdateRequest.clientMetadata, false)
+      ctx.json(
+        updatedInfo.toJSONObject()
+      )
+    } catch (exc: Exception) {
+      ctx.status(HttpCode.BAD_REQUEST).json(RegistrationError.INVALID_CLIENT_METADATA.setDescription(exc.message).toJSONObject())
+    }
+  }
+
+  private fun deleteRegisteredClient(ctx: Context) {
+    val clientId: String = ctx.pathParam("clientId")
+    if(!verifyClientRegistrationAuth(ctx, clientId)) {
+      throw ForbiddenResponse("Forbidden")
+    }
+    val clientInfo = OIDCClientRegistry.getClient(clientId).orElseThrow { UnauthorizedResponse("Client with given ID not found.") }
+    OIDCClientRegistry.unregisterClient(clientInfo)
+    ctx.status(HttpCode.NO_CONTENT)
   }
 }

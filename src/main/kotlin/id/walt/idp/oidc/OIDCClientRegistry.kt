@@ -7,6 +7,8 @@ import com.nimbusds.oauth2.sdk.auth.Secret
 import com.nimbusds.oauth2.sdk.client.ClientInformation
 import com.nimbusds.oauth2.sdk.client.ClientMetadata
 import com.nimbusds.oauth2.sdk.id.ClientID
+import com.nimbusds.oauth2.sdk.token.BearerAccessToken
+import id.walt.idp.config.IDPConfig
 import id.walt.services.context.ContextManager
 import id.walt.services.hkvstore.HKVKey
 import id.walt.services.hkvstore.HKVStoreService
@@ -14,6 +16,7 @@ import mu.KotlinLogging
 import net.minidev.json.JSONObject
 import net.minidev.json.JSONStyle
 import net.minidev.json.parser.JSONParser
+import java.net.URI
 import java.util.*
 
 object OIDCClientRegistry : CacheLoader<String, Optional<ClientInformation>>() {
@@ -47,7 +50,11 @@ object OIDCClientRegistry : CacheLoader<String, Optional<ClientInformation>>() {
 
   private fun createClientInfo(clientId: ClientID, clientMetadata: ClientMetadata, allRedirectUris: Boolean, clientSecret: Secret):ClientInformation {
     log.info { "Creating/updating client: $clientId" }
-    return ClientInformation(clientId, Date(), clientMetadata.apply { customFields[ALL_REDIRECT_URIS] = allRedirectUris }, clientSecret)
+    return ClientInformation(clientId, Date(),
+                            clientMetadata.apply { customFields[ALL_REDIRECT_URIS] = allRedirectUris },
+                            clientSecret,
+                            URI("${OIDCManager.OIDCApiUrl}/clients/${clientId.value}"),
+                            BearerAccessToken(OIDCManager.getClientRegistrationToken(clientId.value)))
       .also {
         ContextManager.runWith(OIDCManager.oidcContext) {
           HKVStoreService.getService().put(HKVKey(CLIENT_REGISTRATION_ROOT, it.id.value), it.toJSONObject().toString(JSONStyle.LT_COMPRESS))
@@ -56,21 +63,19 @@ object OIDCClientRegistry : CacheLoader<String, Optional<ClientInformation>>() {
       }
   }
 
-  fun updateClient(clientId: String, clientMetadata: ClientMetadata, allRedirectUris: Boolean): ClientInformation {
-    val clientInfo = getClient(clientId).orElseThrow { Exception("Client with given client_id doesn't exist") }
+  fun updateClient(clientInfo: ClientInformation, clientMetadata: ClientMetadata, allRedirectUris: Boolean): ClientInformation {
     if(OIDCManager.checkClientCompatibility(clientMetadata)) {
       return createClientInfo(clientInfo.id, clientMetadata, allRedirectUris, clientInfo.secret)
     }
     throw Exception("Client metadata not compatible with OIDC Manager")
   }
 
-  fun unregisterClient(clientId: String) {
-    val clientInfo = getClient(clientId).orElseThrow { Exception("Client with given client_id doesn't exist") }
-    log.info { "Unregistering client $clientId" }
+  fun unregisterClient(clientInfo: ClientInformation) {
+    log.info { "Unregistering client ${clientInfo.id}" }
     ContextManager.runWith(OIDCManager.oidcContext) {
-      HKVStoreService.getService().delete(HKVKey(CLIENT_REGISTRATION_ROOT, clientId))
+      HKVStoreService.getService().delete(HKVKey(CLIENT_REGISTRATION_ROOT, clientInfo.id.value))
     }
-    clientsCache.invalidate(clientId)
+    clientsCache.invalidate(clientInfo.id.value)
   }
 
   fun listClientIds(): Set<String> {

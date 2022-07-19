@@ -6,16 +6,13 @@ import com.auth0.jwt.exceptions.JWTDecodeException
 import com.auth0.jwt.interfaces.DecodedJWT
 import com.google.common.cache.Cache
 import com.google.common.cache.CacheBuilder
-import com.google.common.cache.LoadingCache
 import com.jayway.jsonpath.JsonPath
 import com.nimbusds.jose.jwk.JWK
 import com.nimbusds.jose.jwk.JWKSet
 import com.nimbusds.jwt.JWTClaimsSet
 import com.nimbusds.oauth2.sdk.*
 import com.nimbusds.oauth2.sdk.auth.ClientAuthenticationMethod
-import com.nimbusds.oauth2.sdk.client.ClientInformation
 import com.nimbusds.oauth2.sdk.client.ClientMetadata
-import com.nimbusds.oauth2.sdk.client.ClientRegistrationResponse
 import com.nimbusds.oauth2.sdk.id.Issuer
 import com.nimbusds.oauth2.sdk.token.AccessToken
 import com.nimbusds.oauth2.sdk.token.BearerAccessToken
@@ -25,12 +22,13 @@ import com.nimbusds.openid.connect.sdk.claims.UserInfo
 import com.nimbusds.openid.connect.sdk.op.OIDCProviderMetadata
 import com.nimbusds.openid.connect.sdk.token.OIDCTokens
 import id.walt.WALTID_DATA_ROOT
-import id.walt.common.client
 import id.walt.crypto.KeyAlgorithm
 import id.walt.crypto.KeyId
 import id.walt.idp.IDPManager
 import id.walt.idp.IDPType
 import id.walt.idp.config.IDPConfig
+import id.walt.idp.context.ContextFactory
+import id.walt.idp.context.ContextId
 import id.walt.idp.siop.SIOPState
 import id.walt.idp.util.WaltIdAlgorithm
 import id.walt.model.dif.*
@@ -61,16 +59,13 @@ import java.util.*
 import java.util.concurrent.TimeUnit
 
 object OIDCManager : IDPManager {
+  const val NEW_CLIENT_REGISTRATION_ID = "_IDP_KIT_NEW_CLIENT_"
   val EXPIRATION_TIME: Duration = Duration.ofMinutes(5)
   private val sessionCache: Cache<String, OIDCSession> = CacheBuilder.newBuilder().expireAfterAccess(EXPIRATION_TIME.seconds, TimeUnit.SECONDS).build()
   private val log = KotlinLogging.logger {}
 
-  val oidcContext = UserContext(
-    contextId = "OIDCContext",
-    hkvStore = FileSystemHKVStore(FilesystemStoreConfig("$WALTID_DATA_ROOT/data/idp")),
-    keyStore = HKVKeyStoreService(),
-    vcStore = HKVVcStoreService()
-  )
+  val oidcContext
+    get() = ContextFactory.getContextFor(ContextId.OIDC)
 
   private lateinit var keyId: KeyId
   private lateinit var jwtAlgorithm: Algorithm
@@ -92,14 +87,15 @@ object OIDCManager : IDPManager {
   }
 
   val oidcProviderMetadata get() = OIDCProviderMetadata(
-    Issuer(oidcApiUrl),
+    Issuer(OIDCApiUrl),
     listOf(SubjectType.PUBLIC),
-    URI.create("$oidcApiUrl/jwkSet")
+    URI.create("$OIDCApiUrl/jwkSet")
   ).apply {
-    authorizationEndpointURI = URI.create("$oidcApiUrl/authorize")
-    pushedAuthorizationRequestEndpointURI = URI.create("$oidcApiUrl/par")
-    tokenEndpointURI = URI.create("$oidcApiUrl/token")
-    userInfoEndpointURI = URI.create("$oidcApiUrl/userInfo")
+    authorizationEndpointURI = URI.create("$OIDCApiUrl/authorize")
+    pushedAuthorizationRequestEndpointURI = URI.create("$OIDCApiUrl/par")
+    tokenEndpointURI = URI.create("$OIDCApiUrl/token")
+    userInfoEndpointURI = URI.create("$OIDCApiUrl/userInfo")
+    registrationEndpointURI = URI.create("$OIDCApiUrl/clients/register")
     grantTypes = listOf(GrantType.AUTHORIZATION_CODE)
     responseTypes = listOf(ResponseType.CODE, ResponseType.IDTOKEN, ResponseType.TOKEN, ResponseType.CODE_IDTOKEN, ResponseType.CODE_TOKEN, ResponseType.IDTOKEN_TOKEN, ResponseType.CODE_IDTOKEN_TOKEN)
     claims = listOf("vp_token", *(IDPConfig.config.claimMappings?.mappings?.map { m -> m.claim }?.toSet() ?: setOf()).toTypedArray())
@@ -156,8 +152,8 @@ object OIDCManager : IDPManager {
            clientMetadata.tokenEndpointAuthMethod?.let { oidcMeta.tokenEndpointAuthMethods.contains(it) } ?: true
   }
 
-  private const val oidcApiPath: String = "api/oidc"
-  private val oidcApiUrl: String get() = "${IDPConfig.config.externalUrl}/$oidcApiPath"
+  private const val OIDC_API_PATH: String = "api/oidc"
+  val OIDCApiUrl: String get() = "${IDPConfig.config.externalUrl}/$OIDC_API_PATH"
 
   fun getWalletRedirectionUri(session: OIDCSession): URI {
     val siopReq = VerifierManager.getService().newRequest(
@@ -226,6 +222,14 @@ object OIDCManager : IDPManager {
           }
         }
         .sign(alg)
+    },
+    JWT.require(jwtAlgorithm).build()
+  )
+
+  val clientRegistrationTokenProvider = JWTProvider(
+    jwtAlgorithm,
+    { clientID: String, alg: Algorithm? ->
+      JWT.create().withKeyId(keyId.id).withSubject(clientID).sign(alg)
     },
     JWT.require(jwtAlgorithm).build()
   )
@@ -324,4 +328,8 @@ object OIDCManager : IDPManager {
   }
 
   override val idpType = IDPType.OIDC
+
+  fun getClientRegistrationToken(clientID: String = NEW_CLIENT_REGISTRATION_ID): String {
+    return clientRegistrationTokenProvider.generateToken(clientID)
+  }
 }
