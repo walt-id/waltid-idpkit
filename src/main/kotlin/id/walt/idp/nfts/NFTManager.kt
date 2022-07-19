@@ -3,6 +3,7 @@ package id.walt.idp.nfts
 import com.nimbusds.jose.shaded.json.JSONObject
 import com.nimbusds.jose.shaded.json.parser.JSONParser
 import com.nimbusds.oauth2.sdk.AuthorizationRequest
+import id.walt.idp.config.IDPConfig
 import id.walt.idp.oidc.OIDCManager
 import id.walt.nftkit.services.NftService
 import id.walt.nftkit.services.VerificationService
@@ -10,6 +11,9 @@ import id.walt.vclib.model.VerifiableCredential.Companion.klaxon
 import java.math.BigInteger
 
 object  NFTManager  {
+
+    private const val NFT_API_PATH: String = "api/nft"
+    val NFTApiUrl: String get() = "${IDPConfig.config.externalUrl}/$NFT_API_PATH"
 
     fun verifyNftOwnershipResponse(sessionId: String, account: String) : NftResponseVerificationResult{
         val result= nftCollectionOwnershipVerification(sessionId, account)

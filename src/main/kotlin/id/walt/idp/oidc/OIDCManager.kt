@@ -174,7 +174,7 @@ object OIDCManager : IDPManager {
       )
       return URI.create("${session.wallet.url}/${session.wallet.presentPath}?${siopReq.toUriQueryString()}")
     }else{
-      return URI.create("${session.wallet.url}?session=${session.id}&redirect_uri=http://localhost:8080/api/nft/callback")
+      return URI.create("${session.wallet.url}?session=${session.id}&redirect_uri=${NFTManager.NFTApiUrl}/callback")
     }
   }
 
