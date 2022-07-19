@@ -84,7 +84,7 @@ object OIDCController {
           ), OIDCAuthorizationRole.ACCESS_TOKEN
         )
       }
-      before("clients", JavalinJWT.createHeaderDecodeHandler(OIDCManager.clientRegistrationTokenProvider))
+      before("clients/*", JavalinJWT.createHeaderDecodeHandler(OIDCManager.clientRegistrationTokenProvider))
       path("clients") {
         post("register", documented(
           document().operation {
@@ -214,7 +214,7 @@ object OIDCController {
   }
 
   private fun registerClient(ctx: Context) {
-    if(verifyClientRegistrationAuth(ctx, null)) {
+    if(!verifyClientRegistrationAuth(ctx, null)) {
       throw ForbiddenResponse("Forbidden")
     }
     val clientRegistrationRequest = ClientRegistrationRequest.parse(ServletUtils.createHTTPRequest(ctx.req))
