@@ -56,7 +56,8 @@ fun main(args: Array<String>) {
         RegisterClientCmd(),
         ListClientCmd(),
         GetClientCmd(),
-        RemoveClientCmd()
+        RemoveClientCmd(),
+        ClientRegistrationTokenCmd()
       )
     )
   ).main(args)

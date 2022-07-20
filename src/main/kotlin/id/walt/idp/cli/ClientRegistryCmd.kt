@@ -75,3 +75,14 @@ class RemoveClientCmd: CliktCommand(name = "remove", help = "Remove OIDC client"
     }
   }
 }
+
+class ClientRegistrationTokenCmd: CliktCommand(name = "token", help = "Get master token to register new clients") {
+
+  override fun run() {
+    OIDCManager.getClientRegistrationToken().let {
+      echo()
+      echo("Client registration master token:")
+      echo(it)
+    }
+  }
+}
