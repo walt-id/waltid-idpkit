@@ -9,6 +9,7 @@ import id.walt.verifier.backend.WalletConfiguration
 data class OIDCSession (
   val id: String,
   val authRequest: AuthorizationRequest,
+  val authorizationMode: OIDCManager.AuthorizationMode,
   val vpTokenClaim: VpTokenClaim?= null,
   val NFTClaim: NFTClaims?= null,
   val wallet: WalletConfiguration,
