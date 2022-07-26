@@ -55,6 +55,8 @@ dependencies {
     // NftKit
     implementation("id.walt:waltid-nftkit:1.0.0")
 
+    // Web UI
+    implementation(project(":web:waltid-idpkit-ui"))
 }
 
 

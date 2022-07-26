@@ -34,8 +34,7 @@ class RegisterClientCmd: CliktCommand(name = "register", help = "Register new OI
         OIDCClientRegistry.updateClient(clientInfo, clientMetadata, allRedirectUris)
       }
       println("Created client registration:")
-      println("client_id: ${clientInfo.id.value}")
-      println("client_secret: ${clientInfo.secret.value}")
+      println(clientInfo.toJSONObject().toJSONString().prettyPrint())
     } catch (exc: Exception) {
       println("Error creating or updating client registration: ${exc.message}")
     }
