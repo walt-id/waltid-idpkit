@@ -5,13 +5,14 @@ import id.walt.idp.nfts.NFTClaims
 import id.walt.model.oidc.VpTokenClaim
 import id.walt.verifier.backend.SIOPResponseVerificationResult
 import id.walt.verifier.backend.WalletConfiguration
-
+import id.walt.siwe.configuration.SiweSession
 data class OIDCSession (
   val id: String,
   val authRequest: AuthorizationRequest,
   val authorizationMode: OIDCManager.AuthorizationMode,
   val vpTokenClaim: VpTokenClaim?= null,
   val NFTClaim: NFTClaims?= null,
+  val siweSession:SiweSession?=null,
   val wallet: WalletConfiguration,
   var verificationResult: ResponseVerificationResult? = null
     )

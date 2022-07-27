@@ -42,6 +42,7 @@ import id.walt.services.keystore.HKVKeyStoreService
 import id.walt.services.keystore.KeyType
 import id.walt.services.oidc.OIDCUtils
 import id.walt.services.vcstore.HKVVcStoreService
+import id.walt.siwe.configuration.SiweSession
 import id.walt.verifier.backend.SIOPResponseVerificationResult
 import id.walt.verifier.backend.VerifierConfig
 import id.walt.verifier.backend.VerifierManager
@@ -132,12 +133,16 @@ object OIDCManager : IDPManager {
     val nftClaim = NFTManager.generateNftClaim(authRequest)
     val walletId: String
     val authorizationMode: AuthorizationMode
+    val siweSession: SiweSession
     if(nftClaim.nftClaim != null) {
        walletId = "NFTswallet"
       authorizationMode= AuthorizationMode.NFT
+      val newNonce = UUID.randomUUID().toString()
+      siweSession= SiweSession(nonce = newNonce)
     } else {
        walletId = authRequest.customParameters["walletId"]?.firstOrNull() ?: VerifierConfig.config.wallets.values.map { wc -> wc.id }.firstOrNull() ?: throw InternalServerErrorResponse("Known wallets not configured")
       authorizationMode= AuthorizationMode.SIOP
+      siweSession= SiweSession(nonce = "")
     }
 
     val wallet = VerifierConfig.config.wallets[walletId] ?: throw BadRequestResponse("No wallet configuration found for given walletId")
@@ -148,6 +153,7 @@ object OIDCManager : IDPManager {
       authorizationMode= authorizationMode,
       vpTokenClaim = vpTokenClaim,
       NFTClaim= nftClaim,
+      siweSession= siweSession,
       wallet = wallet
     ).also {
       sessionCache.put(it.id, it)
@@ -182,7 +188,7 @@ object OIDCManager : IDPManager {
       )
       return URI.create("${session.wallet.url}/${session.wallet.presentPath}?${siopReq.toUriQueryString()}")
     }else{
-      return URI.create("${session.wallet.url}?session=${session.id}&redirect_uri=${NFTManager.NFTApiUrl}/callback")
+      return URI.create("${session.wallet.url}?session=${session.id}&nonce=${session.siweSession?.nonce}&redirect_uri=${NFTManager.NFTApiUrl}/callback")
     }
   }
 
@@ -371,7 +377,7 @@ object OIDCManager : IDPManager {
       )
     } else {
       val error= when(session.authorizationMode){
-        AuthorizationMode.NFT-> "You don't have a NFT in our collection"
+        AuthorizationMode.NFT-> verificationResult.nftresponseVerificationResult?.error
         AuthorizationMode.SIOP -> errorDescriptionFor(verificationResult.siopResponseVerificationResult!!)
       }
       return URI.create(
