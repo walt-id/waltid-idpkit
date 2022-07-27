@@ -42,7 +42,7 @@ object  NFTManager  {
         val session= OIDCManager.getOIDCSession(sessionId)
         val balance= NftService.balanceOf(session?.NFTClaim?.nftClaim?.chain!!,
             session.NFTClaim.nftClaim.smartContractAddress!!, account)
-        return if (balance!!.compareTo(BigInteger("0")) == 1) true else false
+        return balance!!.compareTo(BigInteger("0")) == 1
     }
 
 }
