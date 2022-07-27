@@ -16,7 +16,7 @@
     },
     "NFTswallet": {
         "id": "NFTs-walt.id",
-        "url": "http://localhost:3000",
+        "url": "/connect-wallet",
       "presentPath": "",
       "receivePath" : "",
         "description": "NFTs walt.id web wallet"
