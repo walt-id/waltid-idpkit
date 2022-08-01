@@ -195,7 +195,6 @@ object OIDCController {
     }.getOrElse { exc -> throw BadRequestResponse(exc.message ?: "Bad request") }
     val verificationResult = session.verificationResult ?: throw BadRequestResponse("Session not yet verified")
     if(!verificationResult.isValid) throw BadRequestResponse("Session could not be verified")
-    verificationResult.siopResponseVerificationResult?.vp_token ?: throw BadRequestResponse("No vp_token found for session")
 
     ctx.json(OIDCManager.getUserInfo(session).toJSONObject())
   }

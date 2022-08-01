@@ -1,9 +1,8 @@
 package id.walt.idp.oidc
 
 import com.nimbusds.oauth2.sdk.AuthorizationRequest
-import id.walt.idp.nfts.NFTClaims
+import id.walt.idp.nfts.NFTClaim
 import id.walt.model.oidc.VpTokenClaim
-import id.walt.verifier.backend.SIOPResponseVerificationResult
 import id.walt.verifier.backend.WalletConfiguration
 
 data class OIDCSession (
@@ -11,7 +10,7 @@ data class OIDCSession (
   val authRequest: AuthorizationRequest,
   val authorizationMode: OIDCManager.AuthorizationMode,
   val vpTokenClaim: VpTokenClaim?= null,
-  val NFTClaim: NFTClaims?= null,
+  val nftClaim: NFTClaim?= null,
   val wallet: WalletConfiguration,
   var verificationResult: ResponseVerificationResult? = null
     )
