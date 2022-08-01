@@ -27,6 +27,11 @@ const providerOptions = {
 
 export default {
   name: 'ConnectWallet',
+  data() {
+    return {
+      eth_account: null
+    }
+  },
   methods: {
     async web3modal () {
       const web3Modal = new Web3Modal({
@@ -43,8 +48,13 @@ export default {
       }
 
       try {
+        const redirect_uri = this.$route.query["redirect_uri"]
+        const session_id = this.$route.query["session"]
         // TODO: SIWE challenge!?!
-        // TODO: callback to IDP Kit with ethereum address
+
+
+        // callback to IDP Kit with ethereum address
+        window.location = `${redirect_uri}?sessionId=${session_id}&account=${this.eth_account}`
       } catch (e) {
         console.log(e.response.data)
         this.error = true
