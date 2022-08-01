@@ -1,10 +1,14 @@
 package id.walt.idp.siwe
 
 import id.walt.idp.nfts.NFTController
+import id.walt.idp.nfts.NftResponseVerificationResult
+import id.walt.idp.oidc.OIDCManager
 import id.walt.idp.oidc.OIDCSession
+import id.walt.idp.oidc.ResponseVerificationResult
 import id.walt.siwe.SiweRequest
 import id.walt.siwe.Web3jSignatureVerifier
 import id.walt.siwe.eip4361.Eip4361Message
+import java.net.URI
 import java.util.HashSet
 
 object SiweManager {
@@ -37,5 +41,13 @@ object SiweManager {
         }
         nonceBlacklists.add(eip4361msg.nonce)
         return result
+    }
+
+    fun generateErrorResponseObject(sessionId: String, address: String, errorMessage: String): URI {
+        val siweResponseVerificationResult = SiweResponseVerificationResult(address, sessionId, false, error = errorMessage)
+        val responseVerificationResult= ResponseVerificationResult(siopResponseVerificationResult = null, null,
+            siweResponseVerificationResult)
+        val uri= OIDCManager.continueIDPSessionResponse(sessionId, responseVerificationResult)
+        return uri
     }
 }

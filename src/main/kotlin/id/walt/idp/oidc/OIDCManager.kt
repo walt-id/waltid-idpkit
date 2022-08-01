@@ -69,6 +69,7 @@ object OIDCManager : IDPManager {
   enum class AuthorizationMode {
     SIOP,
     NFT,
+    SIWE,
   }
 
   val oidcContext
@@ -134,6 +135,7 @@ object OIDCManager : IDPManager {
     val walletId: String
     val authorizationMode: AuthorizationMode
     val siweSession: SiweSession
+    //checkout the authentification mode: SIOP, NFT, SIWE
     if(nftClaim.nftClaim != null) {
        walletId = "NFTswallet"
       authorizationMode= AuthorizationMode.NFT
@@ -379,6 +381,7 @@ object OIDCManager : IDPManager {
       val error= when(session.authorizationMode){
         AuthorizationMode.NFT-> verificationResult.nftresponseVerificationResult?.error
         AuthorizationMode.SIOP -> errorDescriptionFor(verificationResult.siopResponseVerificationResult!!)
+        AuthorizationMode.SIWE -> verificationResult.siweResponseVerificationResult?.error
       }
       return URI.create(
         "${session.authRequest.redirectionURI}" +

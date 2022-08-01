@@ -43,7 +43,7 @@ object  NFTManager  {
 
     fun generateErrorResponseObject(sessionId: String, address: String, errorMessage: String): URI {
         val nftResponseVerificationResult =NftResponseVerificationResult(address, sessionId, false, error = errorMessage)
-        val responseVerificationResult= ResponseVerificationResult(siopResponseVerificationResult = null,nftResponseVerificationResult)
+        val responseVerificationResult= ResponseVerificationResult(null,nftResponseVerificationResult, null)
         val uri= OIDCManager.continueIDPSessionResponse(sessionId, responseVerificationResult)
         return uri
     }
@@ -51,7 +51,7 @@ object  NFTManager  {
     private fun nftCollectionOwnershipVerification(sessionId: String, account: String): Boolean {
         val session= OIDCManager.getOIDCSession(sessionId)
         val balance= NftService.balanceOf(session?.NFTClaim?.nftClaim?.chain!!,
-            session.NFTClaim.nftClaim.smartContractAddress!!, account)
+            session.NFTClaim.nftClaim.smartContractAddress!!, account.trim())
         return if (balance!!.compareTo(BigInteger("0")) == 1) true else false
     }
 
