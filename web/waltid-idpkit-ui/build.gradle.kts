@@ -17,6 +17,7 @@ buildscript {
 apply(plugin = "com.github.node-gradle.node")
 
 val buildTask = tasks.findByName("yarn_generate")!!.apply {
+  dependsOn("yarn_install")
   inputs.dir("components")
   inputs.dir("pages")
   inputs.dir("layouts")
