@@ -25,11 +25,12 @@ object IDPRestAPI {
         }
       }
     }.apply {
-      _conf.addStaticFiles { staticFiles ->
-        staticFiles.hostedPath = "/"
-        staticFiles.location = Location.CLASSPATH
-        staticFiles.directory = "web"
+      _conf.addStaticFiles {
+        it.location = Location.CLASSPATH
+        it.directory = "/app"
+        it.hostedPath = "/"
       }
+      _conf.addSinglePageRoot("/", "/app/index.html")
     }
   }
 

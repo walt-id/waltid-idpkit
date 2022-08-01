@@ -6,7 +6,6 @@ import com.auth0.jwt.exceptions.JWTDecodeException
 import com.auth0.jwt.interfaces.DecodedJWT
 import com.google.common.cache.Cache
 import com.google.common.cache.CacheBuilder
-import com.jayway.jsonpath.JsonPath
 import com.nimbusds.jose.jwk.JWK
 import com.nimbusds.jose.jwk.JWKSet
 import com.nimbusds.jwt.JWTClaimsSet
@@ -21,24 +20,22 @@ import com.nimbusds.openid.connect.sdk.*
 import com.nimbusds.openid.connect.sdk.claims.UserInfo
 import com.nimbusds.openid.connect.sdk.op.OIDCProviderMetadata
 import com.nimbusds.openid.connect.sdk.token.OIDCTokens
-import id.walt.WALTID_DATA_ROOT
 import id.walt.crypto.KeyAlgorithm
 import id.walt.crypto.KeyId
 import id.walt.idp.IDPManager
 import id.walt.idp.IDPType
 import id.walt.idp.config.IDPConfig
+import id.walt.idp.config.NFTConfig
 import id.walt.idp.context.ContextFactory
 import id.walt.idp.context.ContextId
+import id.walt.idp.nfts.NFTClaim
 import id.walt.idp.nfts.NFTManager
 import id.walt.idp.siop.SIOPState
 import id.walt.idp.util.WaltIdAlgorithm
 import id.walt.model.dif.*
 import id.walt.model.oidc.VpTokenClaim
-import id.walt.services.hkvstore.FileSystemHKVStore
-import id.walt.services.hkvstore.FilesystemStoreConfig
 import id.walt.services.key.KeyFormat
 import id.walt.services.key.KeyService
-import id.walt.services.keystore.HKVKeyStoreService
 import id.walt.services.keystore.KeyType
 import id.walt.services.oidc.OIDCUtils
 import id.walt.services.vcstore.HKVVcStoreService
@@ -46,8 +43,6 @@ import id.walt.siwe.configuration.SiweSession
 import id.walt.verifier.backend.SIOPResponseVerificationResult
 import id.walt.verifier.backend.VerifierConfig
 import id.walt.verifier.backend.VerifierManager
-import id.walt.verifier.backend.WalletConfiguration
-import id.walt.webwallet.backend.context.UserContext
 import id.walt.webwallet.backend.context.WalletContextManager
 import io.javalin.http.BadRequestResponse
 import io.javalin.http.ForbiddenResponse
@@ -106,8 +101,8 @@ object OIDCManager : IDPManager {
     registrationEndpointURI = URI.create("$OIDCApiUrl/clients/register")
     grantTypes = listOf(GrantType.AUTHORIZATION_CODE)
     responseTypes = listOf(ResponseType.CODE, ResponseType.IDTOKEN, ResponseType.TOKEN, ResponseType.CODE_IDTOKEN, ResponseType.CODE_TOKEN, ResponseType.IDTOKEN_TOKEN, ResponseType.CODE_IDTOKEN_TOKEN)
-    claims = listOf("vp_token", *(IDPConfig.config.claimMappings?.mappings?.map { m -> m.claim }?.toSet() ?: setOf()).toTypedArray())
-    scopes = Scope("openid", *(IDPConfig.config.claimMappings?.mappings?.flatMap { m -> m.scope }?.toSet() ?: setOf()).toTypedArray())
+    claims = listOf("vp_token", *(IDPConfig.config.claimMappings?.allMappings()?.map { m -> m.claim }?.toSet() ?: setOf()).toTypedArray())
+    scopes = Scope("openid", *(IDPConfig.config.claimMappings?.allMappings()?.flatMap { m -> m.scope }?.toSet() ?: setOf()).toTypedArray())
     setCustomParameter("wallets_supported", VerifierConfig.config.wallets.values.map { wallet ->
       mapOf(
         "id" to wallet.id,
@@ -115,6 +110,27 @@ object OIDCManager : IDPManager {
       )
     })
     tokenEndpointAuthMethods = listOf(ClientAuthenticationMethod.CLIENT_SECRET_BASIC)
+  }
+
+  private fun getAuthorizationModeFor(authRequest: AuthorizationRequest): AuthorizationMode {
+    if((OIDCUtils.getVCClaims(authRequest).vp_token != null)
+      || authRequest.scope.contains("vp_token")
+      || authRequest.scope.any {
+        (IDPConfig.config.claimMappings?.mappingsForScope(it)
+          ?.count { m -> m.authorizationMode == AuthorizationMode.SIOP } ?: 0) > 0
+      }
+    ) {
+      return AuthorizationMode.SIOP
+    } else if ((NFTManager.getNFTClaims(authRequest).nftClaim != null)
+      || authRequest.scope.contains("nft_token")
+      || authRequest.scope.any {
+        (IDPConfig.config.claimMappings?.mappingsForScope(it)
+          ?.count { m -> m.authorizationMode == AuthorizationMode.NFT } ?: 0) > 0
+      }
+    ) {
+      return AuthorizationMode.NFT
+    }
+    return IDPConfig.config.fallbackAuthorizationMode
   }
 
   private fun generateVpTokenClaim(authRequest: AuthorizationRequest): VpTokenClaim {
@@ -129,34 +145,38 @@ object OIDCManager : IDPManager {
       ))
   }
 
-  fun initOIDCSession(authRequest: AuthorizationRequest): OIDCSession {
-    val vpTokenClaim = generateVpTokenClaim(authRequest)
-    val nftClaim = NFTManager.generateNftClaim(authRequest)
-    val walletId: String
-    val authorizationMode: AuthorizationMode
-    val siweSession: SiweSession
-    //checkout the authentification mode: SIOP, NFT, SIWE
-    if(nftClaim.nftClaim != null) {
-       walletId = "NFTswallet"
-      authorizationMode= AuthorizationMode.NFT
-      val newNonce = UUID.randomUUID().toString()
-      siweSession= SiweSession(nonce = newNonce)
-    } else {
-       walletId = authRequest.customParameters["walletId"]?.firstOrNull() ?: VerifierConfig.config.wallets.values.map { wc -> wc.id }.firstOrNull() ?: throw InternalServerErrorResponse("Known wallets not configured")
-      authorizationMode= AuthorizationMode.SIOP
-      siweSession= SiweSession(nonce = "")
-    }
+  private fun generateNftClaim(authRequest: AuthorizationRequest): NFTClaim {
+    return NFTManager.getNFTClaims(authRequest)?.nftClaim ?: NFTConfig.config.defaultNFTClaim ?: throw BadRequestResponse("No nft token claim defined for this authorization request")
+  }
 
-    val wallet = VerifierConfig.config.wallets[walletId] ?: throw BadRequestResponse("No wallet configuration found for given walletId")
+  fun initOIDCSession(authRequest: AuthorizationRequest): OIDCSession {
+    val authorizationMode = getAuthorizationModeFor(authRequest)
 
     return OIDCSession(
       id = UUID.randomUUID().toString(),
       authRequest = authRequest,
       authorizationMode= authorizationMode,
-      vpTokenClaim = vpTokenClaim,
-      NFTClaim= nftClaim,
-      siweSession= siweSession,
-      wallet = wallet
+      vpTokenClaim = when(authorizationMode) {
+        AuthorizationMode.SIOP -> generateVpTokenClaim(authRequest)
+        else -> null
+      },
+      nftClaim= when(authorizationMode) {
+        AuthorizationMode.NFT -> generateNftClaim(authRequest)
+        else -> null
+      },
+      wallet = when(authorizationMode) {
+        AuthorizationMode.SIOP -> {
+          val walletId = authRequest.customParameters["walletId"]?.firstOrNull() ?: VerifierConfig.config.wallets.values.map { wc -> wc.id }.firstOrNull() ?: throw InternalServerErrorResponse("Known wallets not configured")
+          VerifierConfig.config.wallets[walletId] ?: throw BadRequestResponse("No wallet configuration found for given walletId")
+        }
+        AuthorizationMode.NFT -> NFTConfig.config.nftWallet
+        AuthorizationMode.SIWE -> NFTConfig.config.nftWallet
+      },
+      siweSession = when(authorizationMode) {
+        AuthorizationMode.NFT -> SiweSession(nonce = UUID.randomUUID().toString())
+        AuthorizationMode.SIWE -> SiweSession(nonce = UUID.randomUUID().toString())
+        else -> null
+      }
     ).also {
       sessionCache.put(it.id, it)
     }
@@ -219,6 +239,14 @@ object OIDCManager : IDPManager {
     )
   }
 
+  fun getSubjectFor(session: OIDCSession): String {
+    return when(session.authorizationMode) {
+      AuthorizationMode.SIOP -> session.verificationResult!!.siopResponseVerificationResult!!.subject!!
+      AuthorizationMode.NFT -> session.verificationResult!!.nftresponseVerificationResult!!.account
+      AuthorizationMode.SIWE -> session.verificationResult!!.siweResponseVerificationResult!!.account
+    }
+  }
+
   val accessTokenProvider = JWTProvider(
     jwtAlgorithm,
     { session: OIDCSession, alg: Algorithm? ->
@@ -232,7 +260,7 @@ object OIDCManager : IDPManager {
     { session: OIDCSession, alg: Algorithm? ->
       JWT.create()
         .withKeyId(keyId.id)
-        .withSubject(session.verificationResult!!.siopResponseVerificationResult!!.subject)
+        .withSubject(getSubjectFor(session))
         .withIssuer("${IDPConfig.config.externalUrl}/api/oidc")
         .withIssuedAt(Date())
         .withAudience(session.authRequest.clientID.value)
@@ -285,33 +313,29 @@ object OIDCManager : IDPManager {
 
   private fun populateUserInfoClaims(claimBuilder: JWTClaimsSet.Builder, session: OIDCSession) {
     //update to add nft metadata in token user claims
-    if(session.verificationResult?.siopResponseVerificationResult!=null && session.verificationResult?.siopResponseVerificationResult?.vp_token == null) throw BadRequestResponse("No vp_token received from SIOP response")
+    if(session.verificationResult?.isValid != true) throw BadRequestResponse("No valid verification available for this session")
 
-    if(session.verificationResult?.siopResponseVerificationResult!=null ) {
+    if(session.authorizationMode == AuthorizationMode.SIOP) {
       // populate vp_token claim, if specifically requested in auth request
       if(OIDCUtils.getVCClaims(session.authRequest).vp_token != null) {
-        claimBuilder.claim("vp_token", session.verificationResult!!.siopResponseVerificationResult?.vp_token!!.encode())
+        claimBuilder.claim("vp_token", session.verificationResult!!.siopResponseVerificationResult!!.vp_token!!.encode())
       }
-
-      // populate claims based on OIDC Scope, and/or claims requested in auth request
-      (session.authRequest.scope?.flatMap { s -> IDPConfig.config.claimMappings?.mappingsForScope(s) ?: listOf() } ?: listOf())
-        .plus(session.authRequest.customParameters["claims"]?.flatMap { c -> IDPConfig.config.claimMappings?.mappingsForClaim(c) ?: listOf() } ?: listOf())
-        .toSet().forEach { m ->
-          val credential = session.verificationResult!!.siopResponseVerificationResult?.vp_token!!.verifiableCredential.firstOrNull{ c -> c.type.contains(m.credentialType) } ?: throw BadRequestResponse("vp_token from SIOP response doesn't contain required credentials")
-          val jp = JsonPath.parse(credential.json)
-          val value = m.valuePath.split(" ").map { jp.read<Any>(it) }.joinToString(" ")
-          claimBuilder.claim(m.claim, value)
-        }
+    } else if(session.authorizationMode == AuthorizationMode.NFT) {
+      claimBuilder.claim("account", session.verificationResult!!.nftresponseVerificationResult!!.account)
     }
 
-    if(session.verificationResult?.nftresponseVerificationResult != null) {
-      claimBuilder.claim("account", session.verificationResult?.nftresponseVerificationResult!!.account)
-    }
+    // populate claims based on OIDC Scope, and/or claims requested in auth request
+    (session.authRequest.scope?.flatMap { s -> IDPConfig.config.claimMappings?.mappingsForScope(s) ?: listOf() } ?: listOf())
+      .plus(session.authRequest.customParameters["claims"]?.flatMap { c -> IDPConfig.config.claimMappings?.mappingsForClaim(c) ?: listOf() } ?: listOf())
+      .toSet().forEach { m ->
+        // fill claims based on claim mapping
+        m.fillClaims(session.verificationResult!!, claimBuilder)
+      }
   }
 
   fun getUserInfo(session: OIDCSession): UserInfo {
-    val verificationResult = session.verificationResult?.siopResponseVerificationResult ?: throw BadRequestResponse("SIOP request not yet verified")
-    val claimBuilder = JWTClaimsSet.Builder().subject(verificationResult.subject)
+    session.verificationResult ?: throw BadRequestResponse("Auth request not yet verified")
+    val claimBuilder = JWTClaimsSet.Builder().subject(getSubjectFor(session))
     populateUserInfoClaims(claimBuilder, session)
     return UserInfo(
       claimBuilder.build()

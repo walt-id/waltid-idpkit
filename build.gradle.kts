@@ -61,6 +61,12 @@ dependencies {
     testImplementation("io.kotest:kotest-runner-junit5:5.1.0")
     testImplementation("io.kotest:kotest-assertions-core:5.1.0")
     testImplementation("io.kotest:kotest-assertions-json:5.1.0")
+
+    // NftKit
+    implementation("id.walt:waltid-nftkit:1.0.0")
+
+    // Web UI
+    implementation(project(":web:waltid-idpkit-ui"))
 }
 
 tasks.withType<KotlinCompile> {

@@ -1,41 +1,41 @@
 package id.walt.idp
 
-import id.walt.idp.oidc.ClaimMapping
+import id.walt.idp.oidc.VCClaimMapping
 import id.walt.idp.oidc.ClaimMappings
 
 val TEST_CLAIM_MAPPINGS = ClaimMappings(
-  mappings = listOf(
-    ClaimMapping(
+  vc_mappings = listOf(
+    VCClaimMapping(
       setOf("profile"),
       "name",
       "VerifiableId",
       "$.credentialSubject.firstName $.credentialSubject.familyName"
     ),
-    id.walt.idp.oidc.ClaimMapping(
+    VCClaimMapping(
       setOf("profile"),
       "family_name",
       "VerifiableId",
       "$.credentialSubject.familyName"
     ),
-    id.walt.idp.oidc.ClaimMapping(
+    VCClaimMapping(
       setOf("profile"),
       "given_name",
       "VerifiableId",
       "$.credentialSubject.firstName"
     ),
-    id.walt.idp.oidc.ClaimMapping(
+    VCClaimMapping(
       setOf("profile"),
       "gender",
       "VerifiableId",
       "$.credentialSubject.gender"
     ),
-    id.walt.idp.oidc.ClaimMapping(
+    VCClaimMapping(
       setOf("profile"),
       "birthdate",
       "VerifiableId",
       "$.credentialSubject.dateOfBirth"
     ),
-    id.walt.idp.oidc.ClaimMapping(
+    VCClaimMapping(
       setOf("address"),
       "address",
       "VerifiableId",

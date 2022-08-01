@@ -1,4 +1,5 @@
 FROM openjdk:17-jdk-slim as buildstage
+RUN apt-get update && apt-get install -y git nodejs npm && npm install -g yarn
 COPY ./ /
 RUN ./gradlew installDist
 

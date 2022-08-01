@@ -7,7 +7,6 @@ import id.walt.idp.config.IDPConfig
 import id.walt.idp.oidc.OIDCManager
 import id.walt.idp.oidc.ResponseVerificationResult
 import id.walt.nftkit.services.NftService
-import id.walt.nftkit.services.VerificationService
 import id.walt.vclib.model.VerifiableCredential.Companion.klaxon
 import java.math.BigInteger
 import java.net.URI
@@ -49,9 +48,11 @@ object  NFTManager  {
     }
 
     private fun nftCollectionOwnershipVerification(sessionId: String, account: String): Boolean {
-        val session= OIDCManager.getOIDCSession(sessionId)
-        val balance= NftService.balanceOf(session?.NFTClaim?.nftClaim?.chain!!,
-            session.NFTClaim.nftClaim.smartContractAddress!!, account.trim())
+        val session = OIDCManager.getOIDCSession(sessionId)
+        val balance = NftService.balanceOf(
+            session?.nftClaim?.chain!!,
+            session.nftClaim.smartContractAddress!!, account.trim()
+        )
         return if (balance!!.compareTo(BigInteger("0")) == 1) true else false
     }
 
