@@ -21,7 +21,7 @@ data:
     {
       "externalUrl": "https://idp.walt-test.cloud",
       "claimMappings": {
-        "mappings": [
+        "vc_mappings": [
           {
             "scope": [ "profile" ],
             "claim": "name",

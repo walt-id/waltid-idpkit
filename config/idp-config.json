@@ -1,7 +1,7 @@
 {
   "externalUrl": "http://localhost:8080",
   "claimMappings": {
-    "mappings": [
+    "vc_mappings": [
       {
         "scope": [ "profile" ],
         "claim": "name",
