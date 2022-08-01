@@ -30,7 +30,7 @@ object OIDCClientRegistry : CacheLoader<String, Optional<ClientInformation>>() {
     return Optional.ofNullable(
       ContextManager.runWith(OIDCManager.oidcContext) {
         log.info { "Loading OIDC client from store" }
-        HKVStoreService.getService().getAsString(HKVKey(CLIENT_REGISTRATION_ROOT, key))?.let {
+        ContextManager.hkvStore.getAsString(HKVKey(CLIENT_REGISTRATION_ROOT, key))?.let {
           log.debug { "Parsing OIDC client info" }
           ClientInformation.parse(JSONParser(-1).parse(it) as JSONObject?)
       }
@@ -57,7 +57,7 @@ object OIDCClientRegistry : CacheLoader<String, Optional<ClientInformation>>() {
                             BearerAccessToken(OIDCManager.getClientRegistrationToken(clientId.value)))
       .also {
         ContextManager.runWith(OIDCManager.oidcContext) {
-          HKVStoreService.getService().put(HKVKey(CLIENT_REGISTRATION_ROOT, it.id.value), it.toJSONObject().toString(JSONStyle.LT_COMPRESS))
+          ContextManager.hkvStore.put(HKVKey(CLIENT_REGISTRATION_ROOT, it.id.value), it.toJSONObject().toString(JSONStyle.LT_COMPRESS))
         }
         clientsCache.put(it.id.value, Optional.of(it))
       }
@@ -73,14 +73,14 @@ object OIDCClientRegistry : CacheLoader<String, Optional<ClientInformation>>() {
   fun unregisterClient(clientInfo: ClientInformation) {
     log.info { "Unregistering client ${clientInfo.id}" }
     ContextManager.runWith(OIDCManager.oidcContext) {
-      HKVStoreService.getService().delete(HKVKey(CLIENT_REGISTRATION_ROOT, clientInfo.id.value))
+      ContextManager.hkvStore.delete(HKVKey(CLIENT_REGISTRATION_ROOT, clientInfo.id.value))
     }
     clientsCache.invalidate(clientInfo.id.value)
   }
 
   fun listClientIds(): Set<String> {
     return ContextManager.runWith(OIDCManager.oidcContext) {
-      HKVStoreService.getService().listChildKeys(HKVKey(CLIENT_REGISTRATION_ROOT))
+      ContextManager.hkvStore.listChildKeys(HKVKey(CLIENT_REGISTRATION_ROOT))
     }.map { k -> k.name }.toSet()
   }
 }
