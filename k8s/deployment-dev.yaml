@@ -20,13 +20,6 @@ data:
   idp-config.json: |
     {
       "externalUrl": "https://idp.walt-test.cloud",
-      "clients": {
-        "idp-client": {
-          "clientId": "idp-client",
-          "clientSecret": "idp-client-secret",
-          "allowAllRedirectUris": true
-        }
-      },
       "claimMappings": {
         "mappings": [
           {
@@ -68,6 +61,13 @@ data:
         ]
       }
     }
+  nft-config.json: |
+    {
+      "defaultNFTClaim": {
+        "chain": "POLYGON",
+        "smartContractAddress": "0x21dd9b1913d84ab295fdf19834b0b6824a5912ca"
+      }
+    }
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
@@ -105,9 +105,13 @@ spec:
               readOnly: true
             - mountPath: "/waltid/idp/data/"
               name: idp-data
+            - name: idpkit-nft-key-config
+              mountPath: "/waltid/idp/nftconfig/"
           env:
             - name: WALTID_DATA_ROOT
               value: "/waltid/idp"
+            - name: WALTID_CONFIG_PATH
+              value: "/waltid/idp/nftconfig/"
           args:
             - run
             - --bind-all
@@ -121,6 +125,9 @@ spec:
         - name: idp-data
           persistentVolumeClaim:
             claimName: idp-data-volume-claim
+        - name: idpkit-nft-key-config
+          secret:
+            secretName: idpkit-nft-key-config
 ---
 kind: Service
 apiVersion: v1
