@@ -52,7 +52,6 @@ export default {
         const session_id = this.$route.query["session"]
         // TODO: SIWE challenge!?!
 
-
         // callback to IDP Kit with ethereum address
         window.location = `${redirect_uri}?sessionId=${session_id}&account=${this.eth_account}`
       } catch (e) {
