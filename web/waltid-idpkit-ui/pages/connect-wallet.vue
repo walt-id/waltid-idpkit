@@ -12,6 +12,8 @@
 <script>
 import Web3Modal from "web3modal";
 import WalletConnectProvider from "@walletconnect/web3-provider";
+import {ethers} from 'ethers';
+
 
 const providerOptions = {
   walletconnect: {
@@ -38,23 +40,37 @@ export default {
         cacheProvider: false, // optional
         providerOptions // required
       });
-      const provider = await web3Modal.connect()
-      console.log("provider", provider)
-      if(provider.isMetaMask) {
-        this.eth_account = provider.selectedAddress
-      } else {
-        this.eth_account = provider.accounts[0]
-        provider.disconnect()
-      }
+      const instance = await web3Modal.connect()
+      const provider = new ethers.providers.Web3Provider(instance);
 
       try {
         const redirect_uri = this.$route.query["redirect_uri"]
         const session_id = this.$route.query["session"]
-        // TODO: SIWE challenge!?!
+        const nonce= this.$route.query["nonce"]
 
+        const signer = provider.getSigner();
+        const signerAddress = await signer.getAddress();
 
-        // callback to IDP Kit with ethereum address
-        window.location = `${redirect_uri}?sessionId=${session_id}&account=${this.eth_account}`
+        const description = 'Sign in with Ethereum to the app.';
+        const origin = window.location.origin;
+        const domain = window.location.host;
+
+        const eip4361msg = `${domain} wants you to sign in with your Ethereum account: 
+${signerAddress} 
+${description} 
+URI: ${origin}
+Version: 1
+Chain ID: 1
+Nonce: ${nonce}`
+    
+      let msgSignature
+      try {
+        msgSignature = await signer.signMessage(eip4361msg);
+      } catch (ex) {
+        this.catchSigningError(ex)
+        return false
+      }
+        window.location = `${redirect_uri}?session=${session_id}&message=${encodeURIComponent(eip4361msg)}&signature=${msgSignature}`
       } catch (e) {
         console.log(e.response.data)
         this.error = true
