@@ -5,9 +5,11 @@ import com.nimbusds.jose.shaded.json.parser.JSONParser
 import com.nimbusds.oauth2.sdk.AuthorizationRequest
 import id.walt.idp.config.IDPConfig
 import id.walt.idp.oidc.OIDCManager
+import id.walt.idp.oidc.ResponseVerificationResult
 import id.walt.nftkit.services.NftService
 import id.walt.vclib.model.VerifiableCredential.Companion.klaxon
 import java.math.BigInteger
+import java.net.URI
 
 object  NFTManager  {
 
@@ -16,7 +18,8 @@ object  NFTManager  {
 
     fun verifyNftOwnershipResponse(sessionId: String, account: String) : NftResponseVerificationResult{
         val result= nftCollectionOwnershipVerification(sessionId, account)
-        val nftResponseVerificationResult= NftResponseVerificationResult(account, sessionId, result)
+        val error = if (result) null else "Invalid Ownership"
+        val nftResponseVerificationResult= NftResponseVerificationResult(account, sessionId, result, error = error)
         return nftResponseVerificationResult
     }
 
@@ -33,11 +36,24 @@ object  NFTManager  {
         return claims
     }
 
+    fun generateNftClaim(authRequest: AuthorizationRequest): NFTClaims {
+        return getNFTClaims(authRequest)
+    }
+
+    fun generateErrorResponseObject(sessionId: String, address: String, errorMessage: String): URI {
+        val nftResponseVerificationResult =NftResponseVerificationResult(address, sessionId, false, error = errorMessage)
+        val responseVerificationResult= ResponseVerificationResult(null,nftResponseVerificationResult, null)
+        val uri= OIDCManager.continueIDPSessionResponse(sessionId, responseVerificationResult)
+        return uri
+    }
+
     private fun nftCollectionOwnershipVerification(sessionId: String, account: String): Boolean {
-        val session= OIDCManager.getOIDCSession(sessionId)
-        val balance= NftService.balanceOf(session?.nftClaim?.chain!!,
-            session.nftClaim.smartContractAddress!!, account)
-        return balance!!.compareTo(BigInteger("0")) == 1
+        val session = OIDCManager.getOIDCSession(sessionId)
+        val balance = NftService.balanceOf(
+            session?.nftClaim?.chain!!,
+            session.nftClaim.smartContractAddress!!, account.trim()
+        )
+        return if (balance!!.compareTo(BigInteger("0")) == 1) true else false
     }
 
 }
