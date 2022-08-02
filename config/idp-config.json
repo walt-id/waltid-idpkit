@@ -42,6 +42,25 @@
     "default_nft_token_claim": {
       "chain": "POLYGON",
       "smartContractAddress": "0x21dd9b1913d84ab295fdf19834b0b6824a5912ca"
+    },
+    "default_vp_token_claim": {
+      "presentation_definition": {
+        "id": "1",
+        "input_descriptors": [
+          {
+            "id": "1",
+            "constraints": {
+              "fields": [
+                {
+                  "id": "1",
+                  "path": [ "$.type" ],
+                  "filter": { "const":  "VerifiableId" }
+                }
+              ]
+            }
+          }
+        ]
+      }
     }
   }
 }
