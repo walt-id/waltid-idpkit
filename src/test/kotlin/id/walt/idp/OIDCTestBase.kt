@@ -13,7 +13,6 @@ import id.walt.services.vcstore.HKVVcStoreService
 import id.walt.verifier.backend.VerifierConfig
 import id.walt.webwallet.backend.context.UserContext
 import id.walt.webwallet.backend.context.WalletContextManager
-import id.walt.webwallet.backend.rest.RestAPI
 import io.kotest.core.spec.style.AnnotationSpec
 import io.mockk.every
 import io.mockk.mockkObject
@@ -37,7 +36,7 @@ open abstract class OIDCTestBase: AnnotationSpec() {
     ).also { contexts[c.invocation.args.first().toString()] = it }}
 
     mockkObject(IDPConfig)
-    every { IDPConfig.config } returns IDPConfig(externalUrl = "http://localhost:8080", "", claimMappings = TEST_CLAIM_MAPPINGS)
+    every { IDPConfig.config } returns IDPConfig(externalUrl = "http://localhost:8080", "", claimConfig = TEST_CLAIM_MAPPINGS)
 
     mockkObject(VerifierConfig)
     every { VerifierConfig.config } returns VerifierConfig("http://localhost:8080", "http://localhost:8080/api/siop")

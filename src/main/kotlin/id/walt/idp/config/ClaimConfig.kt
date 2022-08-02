@@ -1,8 +1,12 @@
-package id.walt.idp.oidc
+package id.walt.idp.config
 
 import com.jayway.jsonpath.JsonPath
 import com.nimbusds.jwt.JWTClaimsSet
 import com.nimbusds.oauth2.sdk.Scope
+import id.walt.idp.nfts.NFTClaim
+import id.walt.idp.oidc.OIDCManager
+import id.walt.idp.oidc.ResponseVerificationResult
+import id.walt.model.oidc.VpTokenClaim
 import io.javalin.http.BadRequestResponse
 
 abstract class ClaimMapping(
@@ -47,9 +51,11 @@ class NFTClaimMapping (
 }
 
 
-class ClaimMappings(
+class ClaimConfig(
     val vc_mappings: List<VCClaimMapping>? = null,
-    val nft_mappings: List<NFTClaimMapping>? = null
+    val nft_mappings: List<NFTClaimMapping>? = null,
+    val default_nft_token_claim: NFTClaim? = null,
+    val default_vp_token_claim: VpTokenClaim? = null
 ) {
     fun allMappings(): List<ClaimMapping> {
         return (vc_mappings ?: listOf()).plus(nft_mappings ?: listOf())

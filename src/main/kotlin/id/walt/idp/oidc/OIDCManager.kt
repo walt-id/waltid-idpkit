@@ -98,8 +98,8 @@ object OIDCManager : IDPManager {
     registrationEndpointURI = URI.create("$OIDCApiUrl/clients/register")
     grantTypes = listOf(GrantType.AUTHORIZATION_CODE)
     responseTypes = listOf(ResponseType.CODE, ResponseType.IDTOKEN, ResponseType.TOKEN, ResponseType.CODE_IDTOKEN, ResponseType.CODE_TOKEN, ResponseType.IDTOKEN_TOKEN, ResponseType.CODE_IDTOKEN_TOKEN)
-    claims = listOf("vp_token", *(IDPConfig.config.claimMappings?.allMappings()?.map { m -> m.claim }?.toSet() ?: setOf()).toTypedArray())
-    scopes = Scope("openid", *(IDPConfig.config.claimMappings?.allMappings()?.flatMap { m -> m.scope }?.toSet() ?: setOf()).toTypedArray())
+    claims = listOf("vp_token", *(IDPConfig.config.claimConfig?.allMappings()?.map { m -> m.claim }?.toSet() ?: setOf()).toTypedArray())
+    scopes = Scope("openid", *(IDPConfig.config.claimConfig?.allMappings()?.flatMap { m -> m.scope }?.toSet() ?: setOf()).toTypedArray())
     setCustomParameter("wallets_supported", VerifierConfig.config.wallets.values.map { wallet ->
       mapOf(
         "id" to wallet.id,
@@ -113,7 +113,7 @@ object OIDCManager : IDPManager {
     if((OIDCUtils.getVCClaims(authRequest).vp_token != null)
       || authRequest.scope.contains("vp_token")
       || authRequest.scope.any {
-        (IDPConfig.config.claimMappings?.mappingsForScope(it)
+        (IDPConfig.config.claimConfig?.mappingsForScope(it)
           ?.count { m -> m.authorizationMode == AuthorizationMode.SIOP } ?: 0) > 0
       }
     ) {
@@ -121,7 +121,7 @@ object OIDCManager : IDPManager {
     } else if ((NFTManager.getNFTClaims(authRequest).nftClaim != null)
       || authRequest.scope.contains("nft_token")
       || authRequest.scope.any {
-        (IDPConfig.config.claimMappings?.mappingsForScope(it)
+        (IDPConfig.config.claimConfig?.mappingsForScope(it)
           ?.count { m -> m.authorizationMode == AuthorizationMode.NFT } ?: 0) > 0
       }
     ) {
@@ -131,19 +131,23 @@ object OIDCManager : IDPManager {
   }
 
   private fun generateVpTokenClaim(authRequest: AuthorizationRequest): VpTokenClaim {
-    return OIDCUtils.getVCClaims(authRequest).vp_token ?:
+    val vpTokenClaim = OIDCUtils.getVCClaims(authRequest).vp_token ?:
       VpTokenClaim(PresentationDefinition(
         id = "1",
-        input_descriptors = authRequest.scope.flatMap { s -> IDPConfig.config.claimMappings?.credentialTypesForScope(s) ?: setOf() }.toSet().mapIndexed {
+        input_descriptors = authRequest.scope.flatMap { s -> IDPConfig.config.claimConfig?.credentialTypesForScope(s) ?: setOf() }.toSet().mapIndexed {
           index, s -> InputDescriptor(index.toString(), constraints = InputDescriptorConstraints(
             fields = listOf(InputDescriptorField(listOf("$.type"), "1", null, mapOf("const" to s)))
           ), group = setOf("A"))
         }, submission_requirements = listOf(SubmissionRequirement(SubmissionRequirementRule.all, from = "A"))
       ))
+    if(vpTokenClaim.presentation_definition.input_descriptors.isEmpty()) {
+      return IDPConfig.config.claimConfig?.default_vp_token_claim ?: vpTokenClaim
+    }
+    return vpTokenClaim
   }
 
   private fun generateNftClaim(authRequest: AuthorizationRequest): NFTClaim {
-    return NFTManager.getNFTClaims(authRequest)?.nftClaim ?: NFTConfig.config.defaultNFTClaim ?: throw BadRequestResponse("No nft token claim defined for this authorization request")
+    return NFTManager.getNFTClaims(authRequest)?.nftClaim ?: IDPConfig.config.claimConfig?.default_nft_token_claim ?: throw BadRequestResponse("No nft token claim defined for this authorization request")
   }
 
   fun initOIDCSession(authRequest: AuthorizationRequest): OIDCSession {
@@ -307,7 +311,7 @@ object OIDCManager : IDPManager {
 
     if(session.authorizationMode == AuthorizationMode.SIOP) {
       // populate vp_token claim, if specifically requested in auth request
-      if(OIDCUtils.getVCClaims(session.authRequest).vp_token != null) {
+      if(OIDCUtils.getVCClaims(session.authRequest).vp_token != null || session.authRequest.scope.contains("vp_token")) {
         claimBuilder.claim("vp_token", session.verificationResult!!.siopResponseVerificationResult!!.vp_token!!.encode())
       }
     } else if(session.authorizationMode == AuthorizationMode.NFT) {
@@ -315,8 +319,8 @@ object OIDCManager : IDPManager {
     }
 
     // populate claims based on OIDC Scope, and/or claims requested in auth request
-    (session.authRequest.scope?.flatMap { s -> IDPConfig.config.claimMappings?.mappingsForScope(s) ?: listOf() } ?: listOf())
-      .plus(session.authRequest.customParameters["claims"]?.flatMap { c -> IDPConfig.config.claimMappings?.mappingsForClaim(c) ?: listOf() } ?: listOf())
+    (session.authRequest.scope?.flatMap { s -> IDPConfig.config.claimConfig?.mappingsForScope(s) ?: listOf() } ?: listOf())
+      .plus(session.authRequest.customParameters["claims"]?.flatMap { c -> IDPConfig.config.claimConfig?.mappingsForClaim(c) ?: listOf() } ?: listOf())
       .toSet().forEach { m ->
         // fill claims based on claim mapping
         m.fillClaims(session.verificationResult!!, claimBuilder)

@@ -2,9 +2,6 @@ package id.walt.idp.config
 
 import com.beust.klaxon.Klaxon
 import id.walt.idp.nfts.NFTClaim
-import id.walt.idp.oidc.ClaimMappings
-import id.walt.idp.oidc.OIDCManager
-import id.walt.nftkit.services.Chain
 import id.walt.verifier.backend.WalletConfiguration
 import id.walt.webwallet.backend.config.ExternalHostnameUrl
 import id.walt.webwallet.backend.config.externalHostnameUrlValueConverter
@@ -16,9 +13,7 @@ data class NFTConfig (
     "/connect-wallet",
     "", "",
     "IDP Kit connect wallet"
-  ),
-  val defaultNFTClaim: NFTClaim? = null
-
+  )
 ) {
   companion object {
     val CONFIG_FILE = "${id.walt.WALTID_DATA_ROOT}/config/nft-config.json"

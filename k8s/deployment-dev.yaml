@@ -20,7 +20,7 @@ data:
   idp-config.json: |
     {
       "externalUrl": "https://idp.walt-test.cloud",
-      "claimMappings": {
+      "claimConfig": {
         "vc_mappings": [
           {
             "scope": [ "profile" ],
@@ -58,15 +58,15 @@ data:
             "credentialType": "VerifiableId",
             "valuePath": "$.credentialSubject.currentAddress[0]"
           }
-        ]
+        ],
+        "default_nft_token_claim": {
+          "chain": "POLYGON",
+          "smartContractAddress": "0x21dd9b1913d84ab295fdf19834b0b6824a5912ca"
+        }
       }
     }
   nft-config.json: |
     {
-      "defaultNFTClaim": {
-        "chain": "POLYGON",
-        "smartContractAddress": "0x21dd9b1913d84ab295fdf19834b0b6824a5912ca"
-      }
     }
 ---
 apiVersion: v1

@@ -1,9 +1,9 @@
 package id.walt.idp
 
-import id.walt.idp.oidc.VCClaimMapping
-import id.walt.idp.oidc.ClaimMappings
+import id.walt.idp.config.VCClaimMapping
+import id.walt.idp.config.ClaimConfig
 
-val TEST_CLAIM_MAPPINGS = ClaimMappings(
+val TEST_CLAIM_MAPPINGS = ClaimConfig(
   vc_mappings = listOf(
     VCClaimMapping(
       setOf("profile"),

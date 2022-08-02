@@ -1,6 +1,6 @@
 {
   "externalUrl": "http://localhost:8080",
-  "claimMappings": {
+  "claimConfig": {
     "vc_mappings": [
       {
         "scope": [ "profile" ],
@@ -38,6 +38,10 @@
         "credentialType": "VerifiableId",
         "valuePath": "$.credentialSubject.currentAddress[0]"
       }
-    ]
+    ],
+    "default_nft_token_claim": {
+      "chain": "POLYGON",
+      "smartContractAddress": "0x21dd9b1913d84ab295fdf19834b0b6824a5912ca"
+    }
   }
 }
