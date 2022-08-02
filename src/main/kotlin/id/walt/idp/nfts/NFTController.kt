@@ -41,14 +41,9 @@ object NFTController {
 
     fun nftVerification(ctx: Context){
 
-        //val siweSessionRequest = ctx.bodyAsClass(SiweSessionRequest::class.java)
-
         val sessionId = ctx.queryParam("session") ?: throw  BadRequestResponse("Session not specified")
         val message = ctx.queryParam("message") ?: throw  BadRequestResponse("Message not specified")
         val signature = ctx.queryParam("signature") ?: throw  BadRequestResponse("Signature not specified")
-
-        //val words = message.split("\\s".toRegex()).toTypedArray()
-
 
         val request= SiweRequest(message, signature)
         val session= OIDCManager.getOIDCSession(sessionId)
@@ -58,35 +53,21 @@ object NFTController {
             val uri= NFTManager.generateErrorResponseObject(sessionId, eip4361msg.address, "Invalid or no session was set.")
             ctx.status(HttpCode.FOUND).header("Location", uri.toString())
         }
-        if (!(OIDCManager.AuthorizationMode.SIWE.equals(session?.authorizationMode) || OIDCManager.AuthorizationMode.NFT.equals(
-                session?.authorizationMode
-            ))) {
+        if (!OIDCManager.AuthorizationMode.NFT.equals(session?.authorizationMode) ) {
             val uri= NFTManager.generateErrorResponseObject(sessionId, eip4361msg.address, "Invalid callback.")
             ctx.status(HttpCode.FOUND).header("Location", uri.toString())
         }
 
         if(!SiweManager.messageAndSignatureVerification(session!!, message, signature)){
-            var uri : URI
-            if(OIDCManager.AuthorizationMode.SIWE.equals(session.authorizationMode)){
-                uri= SiweManager.generateErrorResponseObject(sessionId, eip4361msg.address, "Invalid signature.")
-            }else {
-                uri= NFTManager.generateErrorResponseObject(sessionId, eip4361msg.address, "Invalid signature.")
-            }
+            val uri= NFTManager.generateErrorResponseObject(sessionId, eip4361msg.address, "Invalid signature.")
             ctx.status(HttpCode.FOUND).header("Location", uri.toString())
         }
 
-        if(OIDCManager.AuthorizationMode.SIWE.equals(session.authorizationMode)){
-            val siweResponseVerificationResult =SiweResponseVerificationResult(eip4361msg.address, sessionId, true)
-            val responseVerificationResult= ResponseVerificationResult(null, null, siweResponseVerificationResult)
-            val uri= OIDCManager.continueIDPSessionResponse(sessionId, responseVerificationResult)
-            ctx.status(HttpCode.FOUND).header("Location", uri.toString())
+        val result = NFTManager.verifyNftOwnershipResponse(sessionId, eip4361msg.address)
+        val responseVerificationResult= ResponseVerificationResult(siopResponseVerificationResult = null,result)
+        val uri= OIDCManager.continueIDPSessionResponse(sessionId, responseVerificationResult)
+        ctx.status(HttpCode.FOUND).header("Location", uri.toString())
 
-        }else if(OIDCManager.AuthorizationMode.NFT.equals(session.authorizationMode)){
-            val result = NFTManager.verifyNftOwnershipResponse(sessionId, eip4361msg.address)
-            val responseVerificationResult= ResponseVerificationResult(siopResponseVerificationResult = null,result)
-            val uri= OIDCManager.continueIDPSessionResponse(sessionId, responseVerificationResult)
-            ctx.status(HttpCode.FOUND).header("Location", uri.toString())
-        }
     }
 
 
