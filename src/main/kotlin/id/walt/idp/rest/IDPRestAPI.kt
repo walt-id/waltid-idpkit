@@ -2,6 +2,7 @@ package id.walt.idp.rest
 
 import id.walt.idp.nfts.NFTController
 import id.walt.idp.oidc.OIDCController
+import id.walt.idp.siwe.SIWEController
 import id.walt.verifier.backend.VerifierController
 import id.walt.webwallet.backend.rest.RestAPI
 import io.javalin.Javalin
@@ -22,6 +23,9 @@ object IDPRestAPI {
         }
         ApiBuilder.path("nft") {
           NFTController.routes
+        }
+        ApiBuilder.path("siwe") {
+          SIWEController.routes
         }
       }
     }.apply {

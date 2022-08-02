@@ -1,12 +1,11 @@
-package id.walt.idp.nfts
+package id.walt.idp.siwe
 
+import id.walt.idp.nfts.NFTController
+import id.walt.idp.nfts.NFTManager
 import id.walt.idp.oidc.OIDCAuthorizationRole
 import id.walt.idp.oidc.OIDCManager
 import id.walt.idp.oidc.ResponseVerificationResult
-import id.walt.idp.siwe.SiweManager
-import id.walt.idp.siwe.SiweResponseVerificationResult
 import id.walt.siwe.SiweRequest
-import id.walt.siwe.Web3jSignatureVerifier
 import id.walt.siwe.eip4361.Eip4361Message
 import io.javalin.apibuilder.ApiBuilder
 import io.javalin.http.BadRequestResponse
@@ -15,13 +14,9 @@ import io.javalin.http.HttpCode
 import io.javalin.plugin.openapi.dsl.document
 import io.javalin.plugin.openapi.dsl.documented
 import javalinjwt.JavalinJWT
-import java.net.URI
 import java.util.HashSet
 
-
-object NFTController {
-
-    val nonceBlacklists = HashSet<String>()
+object SIWEController {
 
     val routes
         get() = ApiBuilder.path("") {
@@ -30,16 +25,16 @@ object NFTController {
             ApiBuilder.get(
                 "callback", documented(
                     document().operation {
-                        it.summary("NFT callback endpoint")
-                            .addTagsItem("OIDC-NFT")
-                            .operationId("NFT callback")
+                        it.summary("SIWE callback endpoint")
+                            .addTagsItem("OIDC-SIWE")
+                            .operationId("SIWE callback")
                     },
-                    NFTController::nftVerification
+                    SIWEController::siweVerification
                 ), OIDCAuthorizationRole.UNAUTHORIZED
             )
         }
 
-    fun nftVerification(ctx: Context){
+    fun siweVerification(ctx: Context){
 
         val sessionId = ctx.queryParam("session") ?: throw  BadRequestResponse("Session not specified")
         val message = ctx.queryParam("message") ?: throw  BadRequestResponse("Message not specified")
@@ -50,25 +45,25 @@ object NFTController {
         val eip4361msg = Eip4361Message.fromString(request.message)
 
         if (session == null) {
-            val uri= NFTManager.generateErrorResponseObject(sessionId, eip4361msg.address, "Invalid or no session was set.")
-            ctx.status(HttpCode.FOUND).header("Location", uri.toString())
-        }
-        if (!OIDCManager.AuthorizationMode.NFT.equals(session?.authorizationMode) ) {
-            val uri= NFTManager.generateErrorResponseObject(sessionId, eip4361msg.address, "Invalid callback.")
+            val uri= SiweManager.generateErrorResponseObject(sessionId, eip4361msg.address, "Invalid or no session was set.")
             ctx.status(HttpCode.FOUND).header("Location", uri.toString())
         }
 
-        if(!SiweManager.messageAndSignatureVerification(session!!, message, signature)){
-            val uri= NFTManager.generateErrorResponseObject(sessionId, eip4361msg.address, "Invalid signature.")
+        if (!OIDCManager.AuthorizationMode.SIWE.equals(session?.authorizationMode) ) {
+            val uri= SiweManager.generateErrorResponseObject(sessionId, eip4361msg.address, "Invalid callback.")
             ctx.status(HttpCode.FOUND).header("Location", uri.toString())
-        }else {
-            val result = NFTManager.verifyNftOwnershipResponse(sessionId, eip4361msg.address)
-            val responseVerificationResult = ResponseVerificationResult(siopResponseVerificationResult = null, result)
-            val uri = OIDCManager.continueIDPSessionResponse(sessionId, responseVerificationResult)
+        }
+
+
+        if(SiweManager.messageAndSignatureVerification(session!!, message, signature)){
+           val siweResponseVerificationResult =SiweResponseVerificationResult(eip4361msg.address, sessionId, true)
+            val responseVerificationResult= ResponseVerificationResult( null,null,siweResponseVerificationResult)
+            val uri= OIDCManager.continueIDPSessionResponse(sessionId, responseVerificationResult)
+            ctx.status(HttpCode.FOUND).header("Location", uri.toString())
+        }else{
+            val uri= SiweManager.generateErrorResponseObject(sessionId, eip4361msg.address, "Invalid signature.")
             ctx.status(HttpCode.FOUND).header("Location", uri.toString())
         }
 
     }
-
-
 }

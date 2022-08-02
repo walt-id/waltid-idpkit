@@ -1,5 +1,6 @@
 package id.walt.idp.siwe
 
+import id.walt.idp.config.IDPConfig
 import id.walt.idp.nfts.NFTController
 import id.walt.idp.nfts.NftResponseVerificationResult
 import id.walt.idp.oidc.OIDCManager
@@ -14,6 +15,9 @@ import java.util.HashSet
 object SiweManager {
 
     val nonceBlacklists = HashSet<String>()
+
+    private const val SIWE_API_PATH: String = "api/siwe"
+    val SIWEApiUrl: String get() = "${IDPConfig.config.externalUrl}/$SIWE_API_PATH"
 
     fun messageAndSignatureVerification(session: OIDCSession, message: String, signature: String): Boolean {
         var result= true
@@ -32,9 +36,8 @@ object SiweManager {
 
         val address = eip4361msg.address.lowercase()
         val msgSignature = request.signature
-        val origMsg = eip4361msg.toString()
 
-        val signatureVerification = Web3jSignatureVerifier.verifySignature(address, msgSignature, origMsg)
+        val signatureVerification = Web3jSignatureVerifier.verifySignature(address, msgSignature, request.message)
         if (!signatureVerification) {
             result= false
             //println("Invalid signature.")

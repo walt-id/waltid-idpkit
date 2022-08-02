@@ -31,6 +31,7 @@ import id.walt.idp.context.ContextId
 import id.walt.idp.nfts.NFTClaim
 import id.walt.idp.nfts.NFTManager
 import id.walt.idp.siop.SIOPState
+import id.walt.idp.siwe.SiweManager
 import id.walt.idp.util.WaltIdAlgorithm
 import id.walt.model.dif.*
 import id.walt.model.oidc.VpTokenClaim
@@ -129,6 +130,8 @@ object OIDCManager : IDPManager {
       }
     ) {
       return AuthorizationMode.NFT
+    }else if(authRequest.scope.contains("siwe")){
+      return AuthorizationMode.SIWE
     }
     return IDPConfig.config.fallbackAuthorizationMode
   }
@@ -213,8 +216,11 @@ object OIDCManager : IDPManager {
         state = SIOPState(idpType, session.id).encode()
       )
       return URI.create("${session.wallet.url}/${session.wallet.presentPath}?${siopReq.toUriQueryString()}")
-    }else{
+    }else if(AuthorizationMode.NFT.equals(session.authorizationMode)){
       return URI.create("${session.wallet.url}?session=${session.id}&nonce=${session.siweSession?.nonce}&redirect_uri=${NFTManager.NFTApiUrl}/callback")
+    }else{
+      return URI.create("${session.wallet.url}?session=${session.id}&nonce=${session.siweSession?.nonce}&redirect_uri=${SiweManager.SIWEApiUrl}/callback")
+
     }
   }
 
