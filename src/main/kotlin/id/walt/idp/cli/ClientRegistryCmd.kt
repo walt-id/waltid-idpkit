@@ -17,13 +17,13 @@ class ClientRegistryCmd: CliktCommand(name = "clients", help = "Manage registere
 }
 
 class RegisterClientCmd: CliktCommand(name = "register", help = "Register new OIDC client") {
-  val name: String? by option("-n", "--name", help = "Client Name")
+  val clientName: String? by option("-n", "--name", help = "Client Name")
   val redirectUris: List<String> by option("-r", "--redirect-uri", help = "Redirect URI, can be specified multiple times").multiple()
   val allRedirectUris: Boolean by option("--all-redirect-uris", help = "Allow all redirect URIs for this client").flag(default = false)
   val updateClient: String? by option("-u", "--update", help = "Update existing client with given ID")
   override fun run() {
     val clientMetadata = ClientMetadata().apply {
-      name = name
+      name = clientName
       redirectionURIs = redirectUris.map { URI(it) }.toSet()
     }
     try {
