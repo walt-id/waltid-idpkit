@@ -15,16 +15,16 @@ Identity data from a Web3 or SSI wallet can be provided as OIDC user info and/or
 
 The following picture shows a simple OIDC authentication flow between the end user application and the IDP Kit:
 
-![IDP Kit Concept](./idpkit-concept.png)
+![IDP Kit Concept](./ipdkit-concept.png)
 
 Please visit our documentation-section for a more in-depth docu regarding concepts, architecture and usage at: https://docs.walt.id/v/idpkit
 
 ## Documentation
 
 - Docs: https://docs.walt.id/v/idpkit
-- Quick Start (Build & run the SSI Kit with Docker or with **ssikit.sh**): https://docs.walt.id/v/ssikit/getting-started/quick-start
-- CLI Tool: https://docs.walt.id/v/ssikit/getting-started/cli-command-line-interface
-- APIs: https://docs.walt.id/v/ssikit/getting-started/rest-apis
+- Quick Start: https://docs.walt.id/v/idpkit/getting-started/quick-start
+- CLI Tool: https://docs.walt.id/v/idpkit/getting-started/cli
+- APIs: https://docs.walt.id/v/idpkit/getting-started/rest-apis
 
 ## Relevant Standards
 
