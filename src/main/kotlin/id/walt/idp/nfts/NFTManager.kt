@@ -6,6 +6,8 @@ import com.nimbusds.oauth2.sdk.AuthorizationRequest
 import id.walt.idp.config.IDPConfig
 import id.walt.idp.oidc.OIDCManager
 import id.walt.idp.oidc.ResponseVerificationResult
+import id.walt.nftkit.services.Chain
+import id.walt.nftkit.services.NftMetadata
 import id.walt.nftkit.services.NftService
 import id.walt.vclib.model.VerifiableCredential.Companion.klaxon
 import java.math.BigInteger
@@ -19,7 +21,8 @@ object  NFTManager  {
     fun verifyNftOwnershipResponse(sessionId: String, account: String) : NftResponseVerificationResult{
         val result= nftCollectionOwnershipVerification(sessionId, account)
         val error = if (result) null else "Invalid Ownership"
-        val nftResponseVerificationResult= NftResponseVerificationResult(account, sessionId, result, error = error)
+        val nft= getAccountNftMetadata(sessionId, account)
+        val nftResponseVerificationResult= NftResponseVerificationResult(account, sessionId, result, nft,error = error)
         return nftResponseVerificationResult
     }
 
@@ -54,6 +57,12 @@ object  NFTManager  {
             session.nftClaim.smartContractAddress!!, account.trim()
         )
         return if (balance!!.compareTo(BigInteger("0")) == 1) true else false
+    }
+
+    private fun getAccountNftMetadata(sessionId: String, account: String): NftMetadata{
+        val session = OIDCManager.getOIDCSession(sessionId)
+        val nfts= NftService.getAccountNFTsByAlchemy(session?.nftClaim?.chain!!, account).filter { it.contract.address.equals(session?.nftClaim?.smartContractAddress, ignoreCase = true) }.sortedBy { it.id.tokenId }
+        return nfts.get(0).metadata!!
     }
 
 }
