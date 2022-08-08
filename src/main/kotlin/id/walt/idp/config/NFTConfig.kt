@@ -1,7 +1,6 @@
 package id.walt.idp.config
 
 import com.beust.klaxon.Klaxon
-import id.walt.idp.nfts.NFTClaim
 import id.walt.verifier.backend.WalletConfiguration
 import id.walt.webwallet.backend.config.ExternalHostnameUrl
 import id.walt.webwallet.backend.config.externalHostnameUrlValueConverter

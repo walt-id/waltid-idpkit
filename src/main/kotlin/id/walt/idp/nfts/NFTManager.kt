@@ -31,9 +31,9 @@ object  NFTManager  {
             (authRequest.requestObject?.jwtClaimsSet?.claims?.get("claims")?.toString()
                 ?: authRequest.customParameters["claims"]?.firstOrNull())
                 ?.let { JSONParser(-1).parse(it) as JSONObject }
-                ?.let { when(it.containsKey("nftClaim") ) {
+                ?.let { when(it.containsKey("nft_token") ) {
                     true -> it.toJSONString()
-                    else -> it.get("id_token")?.toString()
+                    else -> null
                 }}
                 ?.let { klaxon.parse<NFTClaims>(it) } ?: NFTClaims()
         return claims
@@ -53,15 +53,15 @@ object  NFTManager  {
     private fun nftCollectionOwnershipVerification(sessionId: String, account: String): Boolean {
         val session = OIDCManager.getOIDCSession(sessionId)
         val balance = NftService.balanceOf(
-            session?.nftClaim?.chain!!,
-            session.nftClaim.smartContractAddress!!, account.trim()
+            session?.nftTokenClaim?.chain!!,
+            session.nftTokenClaim.smartContractAddress!!, account.trim()
         )
         return if (balance!!.compareTo(BigInteger("0")) == 1) true else false
     }
 
     private fun getAccountNftMetadata(sessionId: String, account: String): NftMetadata{
         val session = OIDCManager.getOIDCSession(sessionId)
-        val nfts= NftService.getAccountNFTsByAlchemy(session?.nftClaim?.chain!!, account).filter { it.contract.address.equals(session?.nftClaim?.smartContractAddress, ignoreCase = true) }.sortedBy { it.id.tokenId }
+        val nfts= NftService.getAccountNFTsByAlchemy(session?.nftTokenClaim?.chain!!, account).filter { it.contract.address.equals(session?.nftTokenClaim?.smartContractAddress, ignoreCase = true) }.sortedBy { it.id.tokenId }
         return nfts.get(0).metadata!!
     }
 

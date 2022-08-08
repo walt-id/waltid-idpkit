@@ -29,8 +29,8 @@ import id.walt.idp.config.NFTClaimMapping
 import id.walt.idp.config.NFTConfig
 import id.walt.idp.context.ContextFactory
 import id.walt.idp.context.ContextId
-import id.walt.idp.nfts.NFTClaim
 import id.walt.idp.nfts.NFTManager
+import id.walt.idp.nfts.NftTokenClaim
 import id.walt.idp.siop.SIOPState
 import id.walt.idp.siwe.SiweManager
 import id.walt.idp.util.WaltIdAlgorithm
@@ -124,7 +124,7 @@ object OIDCManager : IDPManager {
       }
     ) {
       return AuthorizationMode.SIOP
-    } else if ((NFTManager.getNFTClaims(authRequest).nftClaim != null)
+    } else if ((NFTManager.getNFTClaims(authRequest).nft_token != null)
       || authRequest.scope.contains("nft_token")
       || authRequest.scope.any {
         (IDPConfig.config.claimConfig?.mappingsForScope(it)
@@ -154,13 +154,13 @@ object OIDCManager : IDPManager {
     return vpTokenClaim
   }
 
-  private fun generateNftClaim(authRequest: AuthorizationRequest): NFTClaim {
-    if(NFTManager.getNFTClaims(authRequest).nftClaim != null) {
-      return NFTManager.getNFTClaims(authRequest).nftClaim!!
+  private fun generateNftClaim(authRequest: AuthorizationRequest): NftTokenClaim {
+    if(NFTManager.getNFTClaims(authRequest).nft_token != null) {
+      return NFTManager.getNFTClaims(authRequest).nft_token!!
     } else {
       val nftClaimFromMappings = authRequest.scope.flatMap { s -> IDPConfig.config.claimConfig?.mappingsForScope(s)?.filterIsInstance<NFTClaimMapping>()
         ?: listOf() }
-        .map { m -> NFTClaim(Chain.valueOf(m.chain), m.smartContractAddress) }
+        .map { m -> NftTokenClaim(Chain.valueOf(m.chain), m.smartContractAddress) }
         .distinctBy { c -> "${c.chain}@${c.smartContractAddress}" }
       if(nftClaimFromMappings.size > 1) {
         throw BadRequestResponse("Ambiguous NFT authorization request")
@@ -183,7 +183,7 @@ object OIDCManager : IDPManager {
         AuthorizationMode.SIOP -> generateVpTokenClaim(authRequest)
         else -> null
       },
-      nftClaim= when(authorizationMode) {
+      nftTokenClaim= when(authorizationMode) {
         AuthorizationMode.NFT -> generateNftClaim(authRequest)
         else -> null
       },
@@ -350,7 +350,7 @@ object OIDCManager : IDPManager {
       }
     } else if(session.authorizationMode == AuthorizationMode.NFT) {
       claimBuilder.claim("account", session.verificationResult!!.nftresponseVerificationResult!!.account)
-      if( NFTManager.getNFTClaims(session.authRequest).nftClaim != null ||
+      if( NFTManager.getNFTClaims(session.authRequest).nft_token != null ||
           session.authRequest.scope.contains("nft_token") ||
           session.authRequest.customParameters["claims"]?.contains("nft_token") == true) {
         claimBuilder.claim("nft_token", session.verificationResult!!.nftresponseVerificationResult!!.metadata)
