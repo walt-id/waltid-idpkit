@@ -55,7 +55,8 @@ class ClaimConfig(
     val vc_mappings: List<VCClaimMapping>? = null,
     val nft_mappings: List<NFTClaimMapping>? = null,
     val default_nft_token_claim: NftTokenClaim? = null,
-    val default_vp_token_claim: VpTokenClaim? = null
+    val default_vp_token_claim: VpTokenClaim? = null,
+    val default_nft_policy: DefaultNftPolicy? = null
 ) {
     fun allMappings(): List<ClaimMapping> {
         return (vc_mappings ?: listOf()).plus(nft_mappings ?: listOf())
@@ -83,3 +84,5 @@ class ClaimConfig(
                 ?: setOf()
     }
 }
+
+class DefaultNftPolicy(val withPolicyVeirfication: Boolean?=false, val policy: String, val query: String, val inputs: Map<String, Any?>)

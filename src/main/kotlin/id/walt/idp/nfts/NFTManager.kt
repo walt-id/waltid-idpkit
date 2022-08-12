@@ -6,6 +6,7 @@ import com.nimbusds.oauth2.sdk.AuthorizationRequest
 import id.walt.idp.config.IDPConfig
 import id.walt.idp.oidc.OIDCManager
 import id.walt.idp.oidc.ResponseVerificationResult
+import id.walt.nftkit.opa.DynamicPolicy
 import id.walt.nftkit.services.Chain
 import id.walt.nftkit.services.NftMetadata
 import id.walt.nftkit.services.NftService
@@ -21,7 +22,11 @@ object  NFTManager  {
     fun verifyNftOwnershipResponse(sessionId: String, account: String) : NftResponseVerificationResult{
         val result= nftCollectionOwnershipVerification(sessionId, account)
         val error = if (result) null else "Invalid Ownership"
-        val nft= getAccountNftMetadata(sessionId, account)
+        var nft: NftMetadata? = null
+
+        if(result) {
+            nft = getAccountNftMetadata(sessionId, account)
+        }
         val nftResponseVerificationResult= NftResponseVerificationResult(account, sessionId, result, nft,error = error)
         return nftResponseVerificationResult
     }
@@ -48,6 +53,10 @@ object  NFTManager  {
         val responseVerificationResult= ResponseVerificationResult(null,nftResponseVerificationResult, null)
         val uri= OIDCManager.continueIDPSessionResponse(sessionId, responseVerificationResult)
         return uri
+    }
+
+    fun verifyNftMetadataAgainstPolicy(nftMetadata: NftMetadata): Boolean {
+        return DynamicPolicy.doVerify(IDPConfig.config.claimConfig?.default_nft_policy!!.inputs, IDPConfig.config.claimConfig?.default_nft_policy!!.policy, IDPConfig.config.claimConfig?.default_nft_policy!!.query, nftMetadata)
     }
 
     private fun nftCollectionOwnershipVerification(sessionId: String, account: String): Boolean {
