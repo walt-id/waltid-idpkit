@@ -85,4 +85,4 @@ class ClaimConfig(
     }
 }
 
-class DefaultNftPolicy(val withPolicyVeirfication: Boolean?=false, val policy: String, val query: String, val inputs: Map<String, Any?>)
+class DefaultNftPolicy(val withPolicyVerification: Boolean?=false, val policy: String, val query: String, val inputs: Map<String, Any?>)

@@ -64,7 +64,10 @@ object NFTController {
             ctx.status(HttpCode.FOUND).header("Location", uri.toString())
         }else {
             val result = NFTManager.verifyNftOwnershipResponse(sessionId, eip4361msg.address)
-            if(result.isValid && IDPConfig.config.claimConfig?.default_nft_policy!!.withPolicyVeirfication!!) {
+            if(IDPConfig.config.claimConfig?.default_nft_policy == null){
+                throw  BadRequestResponse("Missed policy configuration")
+            }
+            if(result.isValid && IDPConfig.config.claimConfig?.default_nft_policy!!.withPolicyVerification!!) {
                     val policyVerification= NFTManager.verifyNftMetadataAgainstPolicy(result.metadata!!)
                     if(policyVerification){
                         val responseVerificationResult = ResponseVerificationResult(siopResponseVerificationResult = null, result)
