@@ -7,23 +7,20 @@ import id.walt.nftkit.services.Chain
 import net.minidev.json.JSONObject
 import net.minidev.json.parser.JSONParser
 
-data class NFTClaim(
+data class NftTokenClaim(
     @Json(serializeNull = false)
     val chain: Chain?,
     @Json(serializeNull = false)
     val smartContractAddress: String?,
-    /*@Json(serializeNull = false) //@ListOrSingleVC
-    val vp_token: List<NftService.>? = null,*/
-
 )
 
 class NFTClaims (
-    @Json(serializeNull = false) val nftClaim: NFTClaim? = null,
+    @Json(serializeNull = false) val nft_token: NftTokenClaim? = null,
 ) : OIDCClaimsRequest() {
     override fun toJSONObject(): JSONObject {
         val o = super.toJSONObject()
-        if(nftClaim != null) {
-            o.put("nftClaim", JSONParser(JSONParser.MODE_PERMISSIVE).parse(klaxon.toJsonString(nftClaim)))
+        if(nft_token != null) {
+            o.put("nft_token", JSONParser(JSONParser.MODE_PERMISSIVE).parse(klaxon.toJsonString(nft_token)))
         }
         return o
     }

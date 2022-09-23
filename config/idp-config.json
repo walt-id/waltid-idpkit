@@ -70,6 +70,16 @@
           }
         ]
       }
+    },
+    "default_nft_policy":{
+      "withPolicyVerification": false,
+      "policy": "",
+      "query": "data.app.datanft.allow",
+      "inputs": {
+          "type": "T1",
+          "model": "M1",
+          "reference": "R1"
+      }
     }
   }
 }

@@ -1,5 +1,6 @@
 package id.walt.idp.nfts
 
+import id.walt.idp.config.IDPConfig
 import id.walt.idp.oidc.OIDCAuthorizationRole
 import id.walt.idp.oidc.OIDCManager
 import id.walt.idp.oidc.ResponseVerificationResult
@@ -63,9 +64,24 @@ object NFTController {
             ctx.status(HttpCode.FOUND).header("Location", uri.toString())
         }else {
             val result = NFTManager.verifyNftOwnershipResponse(sessionId, eip4361msg.address)
-            val responseVerificationResult = ResponseVerificationResult(siopResponseVerificationResult = null, result)
-            val uri = OIDCManager.continueIDPSessionResponse(sessionId, responseVerificationResult)
-            ctx.status(HttpCode.FOUND).header("Location", uri.toString())
+            if(IDPConfig.config.claimConfig?.default_nft_policy == null){
+                throw  BadRequestResponse("Missed policy configuration")
+            }
+            if(result.isValid && IDPConfig.config.claimConfig?.default_nft_policy!!.withPolicyVerification!!) {
+                    val policyVerification= NFTManager.verifyNftMetadataAgainstPolicy(result.metadata!!)
+                    if(policyVerification){
+                        val responseVerificationResult = ResponseVerificationResult(siopResponseVerificationResult = null, result)
+                        val uri = OIDCManager.continueIDPSessionResponse(sessionId, responseVerificationResult)
+                        ctx.status(HttpCode.FOUND).header("Location", uri.toString())
+                    }else{
+                        val uri= NFTManager.generateErrorResponseObject(sessionId, eip4361msg.address, "Invalid policy verification.")
+                        ctx.status(HttpCode.FOUND).header("Location", uri.toString())
+                    }
+            }else{
+                val responseVerificationResult = ResponseVerificationResult(siopResponseVerificationResult = null, result)
+                val uri = OIDCManager.continueIDPSessionResponse(sessionId, responseVerificationResult)
+                ctx.status(HttpCode.FOUND).header("Location", uri.toString())
+            }
         }
 
     }

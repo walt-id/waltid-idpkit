@@ -6,6 +6,9 @@ import com.nimbusds.oauth2.sdk.AuthorizationRequest
 import id.walt.idp.config.IDPConfig
 import id.walt.idp.oidc.OIDCManager
 import id.walt.idp.oidc.ResponseVerificationResult
+import id.walt.nftkit.opa.DynamicPolicy
+import id.walt.nftkit.services.Chain
+import id.walt.nftkit.services.NftMetadata
 import id.walt.nftkit.services.NftService
 import id.walt.vclib.model.VerifiableCredential.Companion.klaxon
 import java.math.BigInteger
@@ -19,7 +22,12 @@ object  NFTManager  {
     fun verifyNftOwnershipResponse(sessionId: String, account: String) : NftResponseVerificationResult{
         val result= nftCollectionOwnershipVerification(sessionId, account)
         val error = if (result) null else "Invalid Ownership"
-        val nftResponseVerificationResult= NftResponseVerificationResult(account, sessionId, result, error = error)
+        var nft: NftMetadata? = null
+
+        if(result) {
+            nft = getAccountNftMetadata(sessionId, account)
+        }
+        val nftResponseVerificationResult= NftResponseVerificationResult(account, sessionId, result, nft,error = error)
         return nftResponseVerificationResult
     }
 
@@ -28,9 +36,9 @@ object  NFTManager  {
             (authRequest.requestObject?.jwtClaimsSet?.claims?.get("claims")?.toString()
                 ?: authRequest.customParameters["claims"]?.firstOrNull())
                 ?.let { JSONParser(-1).parse(it) as JSONObject }
-                ?.let { when(it.containsKey("nftClaim") ) {
+                ?.let { when(it.containsKey("nft_token") ) {
                     true -> it.toJSONString()
-                    else -> it.get("id_token")?.toString()
+                    else -> null
                 }}
                 ?.let { klaxon.parse<NFTClaims>(it) } ?: NFTClaims()
         return claims
@@ -47,13 +55,23 @@ object  NFTManager  {
         return uri
     }
 
+    fun verifyNftMetadataAgainstPolicy(nftMetadata: NftMetadata): Boolean {
+        return DynamicPolicy.doVerify(IDPConfig.config.claimConfig?.default_nft_policy!!.inputs, IDPConfig.config.claimConfig?.default_nft_policy!!.policy, IDPConfig.config.claimConfig?.default_nft_policy!!.query, nftMetadata)
+    }
+
     private fun nftCollectionOwnershipVerification(sessionId: String, account: String): Boolean {
         val session = OIDCManager.getOIDCSession(sessionId)
         val balance = NftService.balanceOf(
-            session?.nftClaim?.chain!!,
-            session.nftClaim.smartContractAddress!!, account.trim()
+            session?.nftTokenClaim?.chain!!,
+            session.nftTokenClaim.smartContractAddress!!, account.trim()
         )
         return if (balance!!.compareTo(BigInteger("0")) == 1) true else false
+    }
+
+    private fun getAccountNftMetadata(sessionId: String, account: String): NftMetadata{
+        val session = OIDCManager.getOIDCSession(sessionId)
+        val nfts= NftService.getAccountNFTsByAlchemy(session?.nftTokenClaim?.chain!!, account).filter { it.contract.address.equals(session?.nftTokenClaim?.smartContractAddress, ignoreCase = true) }.sortedBy { it.id.tokenId }
+        return nfts.get(0).metadata!!
     }
 
 }
