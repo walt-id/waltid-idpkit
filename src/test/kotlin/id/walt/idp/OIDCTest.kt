@@ -10,37 +10,17 @@ import com.nimbusds.oauth2.sdk.id.Issuer
 import com.nimbusds.oauth2.sdk.id.State
 import com.nimbusds.openid.connect.sdk.*
 import com.nimbusds.openid.connect.sdk.op.OIDCProviderMetadata
-import id.walt.WALTID_DATA_ROOT
 import id.walt.custodian.Custodian
-import id.walt.idp.config.IDPConfig
-import id.walt.idp.context.ContextFactory
-import id.walt.idp.nfts.NFTClaim
-import id.walt.idp.nfts.NFTClaims
-import id.walt.idp.oidc.OIDCManager
 import id.walt.idp.oidc.OIDCClientRegistry
-import id.walt.idp.rest.IDPRestAPI
 import id.walt.model.DidMethod
 import id.walt.model.dif.InputDescriptor
 import id.walt.model.dif.PresentationDefinition
 import id.walt.model.dif.VCSchema
-import id.walt.model.oidc.OIDCProvider
-import id.walt.model.oidc.SIOPv2Request
 import id.walt.model.oidc.VCClaims
 import id.walt.model.oidc.VpTokenClaim
-import id.walt.nftkit.services.Chain
-import id.walt.servicematrix.ServiceMatrix
-import id.walt.servicematrix.ServiceRegistry
-import id.walt.services.context.Context
-import id.walt.services.context.ContextManager
-import id.walt.services.context.WaltIdContext
 import id.walt.services.did.DidService
-import id.walt.services.hkvstore.FileSystemHKVStore
-import id.walt.services.hkvstore.FilesystemStoreConfig
-import id.walt.services.hkvstore.InMemoryHKVStore
-import id.walt.services.keystore.HKVKeyStoreService
 import id.walt.services.oidc.OIDC4VPService
 import id.walt.services.oidc.OIDCUtils
-import id.walt.services.vcstore.HKVVcStoreService
 import id.walt.signatory.ProofConfig
 import id.walt.signatory.ProofType
 import id.walt.signatory.Signatory
@@ -50,16 +30,15 @@ import id.walt.vclib.model.toCredential
 import id.walt.vclib.templates.VcTemplateManager
 import id.walt.verifier.backend.VerifierConfig
 import id.walt.verifier.backend.WalletConfiguration
-import id.walt.webwallet.backend.context.UserContext
-import id.walt.webwallet.backend.context.WalletContextManager
 import io.javalin.http.HttpCode
 import io.kotest.assertions.throwables.shouldNotThrowAny
-import io.kotest.core.spec.style.AnnotationSpec
+import io.kotest.matchers.collections.beEmpty
 import io.kotest.matchers.collections.shouldContain
 import io.kotest.matchers.collections.shouldContainAll
 import io.kotest.matchers.maps.shouldContainKey
 import io.kotest.matchers.maps.shouldNotContainKey
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.shouldNot
 import io.kotest.matchers.shouldNotBe
 import io.kotest.matchers.string.shouldContain
 import io.mockk.every
@@ -120,27 +99,19 @@ class OIDCTest: OIDCTestBase() {
     authHttpResponse.location.path.trim('/') shouldBe targetWallet.presentPath.trim('/')
 
     // WALLET: parse SIOP request
-    val authReq = AuthorizationRequest.parse(authHttpResponse.location)
-    val vcClaims = OIDCUtils.getVCClaims(authReq)
-    vcClaims.vp_token shouldNotBe null
-    vcClaims.vp_token!!.presentation_definition shouldNotBe null
+    val siopReq = AuthorizationRequest.parse(authHttpResponse.location)
+    val presentationDef = shouldNotThrowAny { OIDC4VPService.getPresentationDefinition(siopReq) }
+    presentationDef.input_descriptors shouldNot beEmpty()
+    siopReq.customParameters shouldContainKey "nonce"
 
     // WALLET: fulfill SIOP request on IDP
-    val siopReq = SIOPv2Request(
-      redirect_uri = authReq.redirectionURI.toString(),
-      response_mode = authReq.responseMode.value,
-      nonce = authReq.customParameters["nonce"]!!.first(),
-      claims = vcClaims,
-      state = authReq.state.value
-    )
-    val vpSvc = OIDC4VPService(OIDCProvider("", ""))
     val presentation =
-      Custodian.getService().createPresentation(listOf(VC), DID, challenge = siopReq.nonce, expirationDate = null)
+      Custodian.getService().createPresentation(listOf(VC), DID, challenge = siopReq.customParameters["nonce"]!!.first(), expirationDate = null)
         .toCredential() as VerifiablePresentation
-    val siopResponse = vpSvc.getSIOPResponseFor(siopReq, DID, listOf(presentation))
+    val siopResponse = OIDC4VPService.getSIOPResponseFor(siopReq, DID, listOf(presentation))
 
     // IDP: redirects to APP with authorization code
-    return URI.create(vpSvc.postSIOPResponse(siopReq, siopResponse))
+    return URI.create(OIDC4VPService.postSIOPResponse(siopReq, siopResponse))
   }
 
   @Test
@@ -188,7 +159,7 @@ class OIDCTest: OIDCTestBase() {
     val userInfoResponse = UserInfoResponse.parse(userInfoHttpResponse)
     userInfoResponse.toSuccessResponse().userInfo.subject.value shouldBe DID
 
-    val vpToken = userInfoResponse.toSuccessResponse().userInfo.getStringClaim("vp_token")
+    val vpToken = userInfoResponse.toSuccessResponse().userInfo.getStringListClaim("vp_token")
     vpToken shouldNotBe null
   }
 

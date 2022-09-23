@@ -41,7 +41,6 @@ import id.walt.services.key.KeyFormat
 import id.walt.services.key.KeyService
 import id.walt.services.keystore.KeyType
 import id.walt.services.oidc.OIDCUtils
-import id.walt.services.vcstore.HKVVcStoreService
 import id.walt.siwe.configuration.SiweSession
 import id.walt.verifier.backend.SIOPResponseVerificationResult
 import id.walt.verifier.backend.VerifierConfig
@@ -138,20 +137,22 @@ object OIDCManager : IDPManager {
     return IDPConfig.config.fallbackAuthorizationMode
   }
 
-  private fun generateVpTokenClaim(authRequest: AuthorizationRequest): VpTokenClaim {
-    val vpTokenClaim = OIDCUtils.getVCClaims(authRequest).vp_token ?:
-      VpTokenClaim(PresentationDefinition(
+  private fun generatePresentationDefinition(authRequest: AuthorizationRequest): PresentationDefinition {
+    // TODO: adapt for updated OIDC4VP flow??
+    val presentationDefinition = OIDCUtils.getVCClaims(authRequest).vp_token?.presentation_definition ?:
+      PresentationDefinition(
         id = "1",
         input_descriptors = authRequest.scope.flatMap { s -> IDPConfig.config.claimConfig?.credentialTypesForScope(s) ?: setOf() }.toSet().mapIndexed {
           index, s -> InputDescriptor(index.toString(), constraints = InputDescriptorConstraints(
             fields = listOf(InputDescriptorField(listOf("$.type"), "1", null, mapOf("const" to s)))
           ), group = setOf("A"))
         }, submission_requirements = listOf(SubmissionRequirement(SubmissionRequirementRule.all, from = "A"))
-      ))
-    if(vpTokenClaim.presentation_definition.input_descriptors.isEmpty()) {
-      return IDPConfig.config.claimConfig?.default_vp_token_claim ?: vpTokenClaim
+      )
+    if(presentationDefinition.input_descriptors.isEmpty()) {
+      // TODO: adapt for updated OIDC4VP flow??
+      return IDPConfig.config.claimConfig?.default_vp_token_claim?.presentation_definition ?: presentationDefinition
     }
-    return vpTokenClaim
+    return presentationDefinition
   }
 
   private fun generateNftClaim(authRequest: AuthorizationRequest): NFTClaim {
@@ -179,8 +180,8 @@ object OIDCManager : IDPManager {
       id = UUID.randomUUID().toString(),
       authRequest = authRequest,
       authorizationMode= authorizationMode,
-      vpTokenClaim = when(authorizationMode) {
-        AuthorizationMode.SIOP -> generateVpTokenClaim(authRequest)
+      presentationDefinition = when(authorizationMode) {
+        AuthorizationMode.SIOP -> generatePresentationDefinition(authRequest)
         else -> null
       },
       nftClaim= when(authorizationMode) {
@@ -227,11 +228,13 @@ object OIDCManager : IDPManager {
   fun getWalletRedirectionUri(session: OIDCSession): URI {
 
     if(session.authorizationMode.equals(AuthorizationMode.SIOP)){
+      val walletUrl = URI.create("${session.wallet.url}/${session.wallet.presentPath}")
       val siopReq = VerifierManager.getService().newRequest(
-        tokenClaim = session.vpTokenClaim!!,
+        walletUrl = walletUrl,
+        presentationDefinition = session.presentationDefinition!!,
         state = SIOPState(idpType, session.id).encode()
       )
-      return URI.create("${session.wallet.url}/${session.wallet.presentPath}?${siopReq.toUriQueryString()}")
+      return siopReq.toURI()
     }else if(AuthorizationMode.NFT.equals(session.authorizationMode)){
       return URI.create("${session.wallet.url}?session=${session.id}&nonce=${session.siweSession?.nonce}&redirect_uri=${NFTManager.NFTApiUrl}/callback")
     }else{
@@ -343,10 +346,11 @@ object OIDCManager : IDPManager {
 
     if(session.authorizationMode == AuthorizationMode.SIOP) {
       // populate vp_token claim, if specifically requested in auth request
+      // TODO: adapt for updated OIDC4VP spec, consider response_type vp_token
       if( OIDCUtils.getVCClaims(session.authRequest).vp_token != null ||
           session.authRequest.scope.contains("vp_token") ||
           session.authRequest.customParameters["claims"]?.contains("vp_token") == true) {
-        claimBuilder.claim("vp_token", session.verificationResult!!.siopResponseVerificationResult!!.vp_token!!.encode())
+        claimBuilder.claim("vp_token", session.verificationResult!!.siopResponseVerificationResult!!.vps.map { it.vp.encode() }.toList())
       }
     } else if(session.authorizationMode == AuthorizationMode.NFT) {
       claimBuilder.claim("account", session.verificationResult!!.nftresponseVerificationResult!!.account)
@@ -377,10 +381,7 @@ object OIDCManager : IDPManager {
 
   private fun errorDescriptionFor(verificationResult: SIOPResponseVerificationResult): String {
     verificationResult.subject ?: return "Subject not defined"
-    verificationResult.request ?: return "No SIOP request defined"
-    if(!verificationResult.id_token_valid) return "Invalid id_token"
-    val vpVerificationResult = verificationResult.verification_result ?: return "Verifiable presentation not verified"
-    if(!vpVerificationResult.valid) return "Verifiable presentation invalid: $vpVerificationResult"
+    if(!verificationResult.isValid) return "Verifiable presentation invalid"
     return "Invalid SIOP response verification result"
   }
 

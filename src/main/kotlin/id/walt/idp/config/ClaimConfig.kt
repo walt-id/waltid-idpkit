@@ -24,7 +24,7 @@ class VCClaimMapping (
     val valuePath: String
 ) : ClaimMapping(scope, claim) {
     override fun fillClaims(verificationResult: ResponseVerificationResult, claimBuilder: JWTClaimsSet.Builder) {
-        val credential = verificationResult.siopResponseVerificationResult?.vp_token?.verifiableCredential?.firstOrNull{ c -> c.type.contains(credentialType) } ?: throw BadRequestResponse("vp_token from SIOP response doesn't contain required credentials")
+        val credential = verificationResult.siopResponseVerificationResult?.vps?.flatMap { it.vp.verifiableCredential }?.firstOrNull{ c -> c.type.contains(credentialType) } ?: throw BadRequestResponse("vp_token from SIOP response doesn't contain required credentials")
         val jp = JsonPath.parse(credential.json)
         val value = valuePath.split(" ").map { jp.read<Any>(it) }.joinToString(" ")
         claimBuilder.claim(claim, value)

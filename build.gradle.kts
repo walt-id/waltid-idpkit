@@ -1,7 +1,7 @@
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
-    kotlin("jvm") version "1.5.31"
+    kotlin("jvm") version "1.7.10"
     application
     `maven-publish`
 }
@@ -56,11 +56,11 @@ dependencies {
 
     // Testing
     //testImplementation(kotlin("test-junit"))
-    testImplementation("io.mockk:mockk:1.12.2")
+    testImplementation("io.mockk:mockk:1.12.4")
 
-    testImplementation("io.kotest:kotest-runner-junit5:5.1.0")
-    testImplementation("io.kotest:kotest-assertions-core:5.1.0")
-    testImplementation("io.kotest:kotest-assertions-json:5.1.0")
+    testImplementation("io.kotest:kotest-runner-junit5:5.4.2")
+    testImplementation("io.kotest:kotest-assertions-core:5.4.2")
+    testImplementation("io.kotest:kotest-assertions-json:5.4.2")
 
     // NftKit
     implementation("id.walt:waltid-nftkit:1.0.0")
@@ -72,7 +72,6 @@ dependencies {
 tasks.withType<KotlinCompile> {
     kotlinOptions.apply {
         jvmTarget = "16"
-        sourceCompatibility = "18"
     }
 }
 
