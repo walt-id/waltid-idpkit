@@ -29,8 +29,8 @@ dependencies {
     implementation("com.nimbusds:oauth2-oidc-sdk:9.27")
 
     // CLI
-    implementation("com.github.ajalt.clikt:clikt-jvm:3.4.0")
-    implementation("com.github.ajalt.clikt:clikt:3.4.0")
+    implementation("com.github.ajalt.clikt:clikt-jvm:3.5.0")
+    implementation("com.github.ajalt.clikt:clikt:3.5.0")
 
     // SSIKIT
     implementation("id.walt:waltid-ssi-kit:1.11.0-SNAPSHOT")
