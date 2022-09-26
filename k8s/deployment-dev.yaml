@@ -7,6 +7,11 @@ data:
     {
       "verifierUiUrl": "https://idp.walt-test.cloud",
       "verifierApiUrl": "https://idp.walt-test.cloud/api/siop",
+      "additionalPolicies": [
+        {
+          "policy": "EUPolicy"
+        }
+      ]
       "wallets": {
         "walt.id": {
           "id": "walt.id",
@@ -22,6 +27,24 @@ data:
       "externalUrl": "https://idp.walt-test.cloud",
       "claimConfig": {
         "vc_mappings": [
+          {
+            "scope": [ "gaiax" ],
+            "claim": "name",
+            "credentialType": "ParticipantCredential",
+            "valuePath": "$.credentialSubject.hasLegallyBindingName"
+          },
+          {
+            "scope": [ "gaiax" ],
+            "claim": "country",
+            "credentialType": "LegalPerson",
+            "valuePath": "$.credentialSubject.gx-participant:legalAddress.gx-participant:addressCountryCode"
+          },
+          {
+            "scope": [ "gaiax" ],
+            "claim": "name",
+            "credentialType": "ParticipantCredential",
+            "valuePath": "$.credentialSubject.hasLegallyBindingName"
+          },
           {
             "scope": [ "profile" ],
             "claim": "name",

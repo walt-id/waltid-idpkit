@@ -3,6 +3,18 @@
   "claimConfig": {
     "vc_mappings": [
       {
+        "scope": [ "gaiax" ],
+        "claim": "name",
+        "credentialType": "ParticipantCredential",
+        "valuePath": "$.credentialSubject.hasLegallyBindingName"
+      },
+      {
+        "scope": [ "gaiax" ],
+        "claim": "country",
+        "credentialType": "LegalPerson",
+        "valuePath": "$.credentialSubject.gx-participant:legalAddress.gx-participant:addressCountryCode"
+      },
+      {
         "scope": [ "profile" ],
         "claim": "name",
         "credentialType": "VerifiableId",

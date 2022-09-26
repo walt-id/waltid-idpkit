@@ -4,6 +4,8 @@ COPY ./ /
 RUN ./gradlew installDist
 
 FROM openjdk:17-jdk-slim
+ADD https://openpolicyagent.org/downloads/v0.41.0/opa_linux_amd64_static /usr/local/bin/opa
+RUN chmod 755 /usr/local/bin/opa
 COPY service-matrix.properties /waltid-idpkit/
 COPY signatory.conf /waltid-idpkit/
 COPY --from=buildstage /build/install/ /
