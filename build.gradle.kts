@@ -33,8 +33,8 @@ dependencies {
     implementation("com.github.ajalt.clikt:clikt:3.5.0")
 
     // SSIKIT
-    implementation("id.walt:waltid-ssi-kit:1.11.0-SNAPSHOT")
-    implementation("id.walt:waltid-ssikit-vclib:1.22.0")
+    implementation("id.walt:waltid-ssi-kit:1.13.0-SNAPSHOT")
+    implementation("id.walt:waltid-ssikit-vclib:1.23.5")
     implementation("id.walt:waltid-walletkit:1.0-SNAPSHOT")
 
     // Service-Matrix
