@@ -10,24 +10,29 @@ import id.walt.services.context.Context
 import id.walt.services.crypto.CryptoService
 import id.walt.webwallet.backend.context.WalletContextManager
 
-class WaltIdAlgorithm(private val keyId: KeyId, private val context: Context, alg: KeyAlgorithm)
-  : Algorithm(when(alg) {
-      KeyAlgorithm.EdDSA_Ed25519 -> "EdDSA"
-      KeyAlgorithm.ECDSA_Secp256k1 -> "ES256K"
-      KeyAlgorithm.RSA -> "RS256"
-    }, "Use key from SSIKit key service") {
-  override fun verify(jwt: DecodedJWT?) {
-    if(!WalletContextManager.runWith(context) {
-        CryptoService.getService().verify(keyId, Base64URL.from(jwt!!.signature).decode(), "${jwt.header}.${jwt.payload}".encodeToByteArray())
-    }) {
-      throw JWTVerificationException("Signature not verified")
+class WaltIdAlgorithm(private val keyId: KeyId, private val context: Context, alg: KeyAlgorithm) :
+    Algorithm(
+        when (alg) {
+            KeyAlgorithm.EdDSA_Ed25519 -> "EdDSA"
+            KeyAlgorithm.ECDSA_Secp256r1 -> "ES256"
+            KeyAlgorithm.ECDSA_Secp256k1 -> "ES256K"
+            KeyAlgorithm.RSA -> "RS256"
+        },
+        "Use key from SSIKit key service"
+    ) {
+    override fun verify(jwt: DecodedJWT?) {
+        if (!WalletContextManager.runWith(context) {
+                CryptoService.getService()
+                    .verify(keyId, Base64URL.from(jwt!!.signature).decode(), "${jwt.header}.${jwt.payload}".encodeToByteArray())
+            }) {
+            throw JWTVerificationException("Signature not verified")
+        }
     }
-  }
 
-  override fun sign(contentBytes: ByteArray?): ByteArray {
-    return WalletContextManager.runWith(context) {
-      CryptoService.getService().sign(keyId, contentBytes!!)
+    override fun sign(contentBytes: ByteArray?): ByteArray {
+        return WalletContextManager.runWith(context) {
+            CryptoService.getService().sign(keyId, contentBytes!!)
+        }
+
     }
-
-  }
 }
