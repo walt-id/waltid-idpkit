@@ -11,7 +11,7 @@ data:
         {
           "policy": "EUPolicy"
         }
-      ]
+      ],
       "wallets": {
         "walt.id": {
           "id": "walt.id",
