@@ -17,14 +17,16 @@ abstract class ClaimMapping(
     abstract val authorizationMode: OIDCManager.AuthorizationMode
 }
 
-class VCClaimMapping (
+class VCClaimMapping(
     scope: Set<String>,
     claim: String,
     val credentialType: String,
     val valuePath: String
 ) : ClaimMapping(scope, claim) {
     override fun fillClaims(verificationResult: ResponseVerificationResult, claimBuilder: JWTClaimsSet.Builder) {
-        val credential = verificationResult.siopResponseVerificationResult?.vps?.flatMap { it.vp.verifiableCredential }?.firstOrNull{ c -> c.type.contains(credentialType) } ?: throw BadRequestResponse("vp_token from SIOP response doesn't contain required credentials")
+        val credential = verificationResult.siopResponseVerificationResult?.vps?.flatMap { it.vp.verifiableCredential }
+            ?.firstOrNull { c -> c.type.contains(credentialType) }
+            ?: throw BadRequestResponse("vp_token from SIOP response doesn't contain required credentials")
         val jp = JsonPath.parse(credential.json)
         val value = valuePath.split(" ").map { jp.read<Any>(it) }.joinToString(" ")
         claimBuilder.claim(claim, value)
@@ -34,7 +36,7 @@ class VCClaimMapping (
         get() = OIDCManager.AuthorizationMode.SIOP
 }
 
-class NFTClaimMapping (
+class NFTClaimMapping(
     scope: Set<String>,
     claim: String,
     val chain: String,
@@ -42,7 +44,9 @@ class NFTClaimMapping (
     val trait: String
 ) : ClaimMapping(scope, claim) {
     override fun fillClaims(verificationResult: ResponseVerificationResult, claimBuilder: JWTClaimsSet.Builder) {
-        val attribute = verificationResult.nftresponseVerificationResult?.metadata?.attributes?.firstOrNull() { a -> a.trait_type == trait } ?: throw BadRequestResponse("Requested nft metadata trait not found in verification response")
+        val attribute =
+            verificationResult.nftresponseVerificationResult?.metadata?.attributes?.firstOrNull { a -> a.trait_type == trait }
+                ?: throw BadRequestResponse("Requested nft metadata trait not found in verification response")
         claimBuilder.claim(trait, attribute.value)
     }
 
@@ -64,25 +68,30 @@ class ClaimConfig(
 
     fun mappingsForScope(scope: Scope.Value): List<ClaimMapping> {
         return allMappings()
-                .filter { m -> m.scope.contains(scope.value) }
+            .filter { m -> m.scope.contains(scope.value) }
     }
 
     fun mappingsForClaim(claim: String): List<ClaimMapping> {
         return allMappings()
-                .filter { m -> m.claim == claim }
+            .filter { m -> m.claim == claim }
     }
 
     fun credentialTypesForScope(scope: Scope.Value): Set<String> {
         return vc_mappings?.filter { m -> m.scope.contains(scope.value) }
-                ?.map { m -> m.credentialType }?.toSet()
-                ?: setOf()
+            ?.map { m -> m.credentialType }?.toSet()
+            ?: setOf()
     }
 
     fun credentialTypesForClaim(claim: String): Set<String> {
         return vc_mappings?.filter { m -> m.claim == claim }
-                ?.map { m -> m.credentialType }?.toSet()
-                ?: setOf()
+            ?.map { m -> m.credentialType }?.toSet()
+            ?: setOf()
     }
 }
 
-class DefaultNftPolicy(val withPolicyVerification: Boolean?=false, val policy: String, val query: String, val inputs: Map<String, Any?>)
+class DefaultNftPolicy(
+    val withPolicyVerification: Boolean? = false,
+    val policy: String,
+    val query: String,
+    val inputs: Map<String, Any?>
+)

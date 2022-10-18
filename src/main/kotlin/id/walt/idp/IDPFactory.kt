@@ -4,9 +4,9 @@ import id.walt.idp.oidc.OIDCManager
 
 object IDPFactory {
 
-  fun getIDP(idpType: IDPType): IDPManager {
-    when(idpType) {
-      IDPType.OIDC -> return OIDCManager
+    fun getIDP(idpType: IDPType): IDPManager {
+        when (idpType) {
+            IDPType.OIDC -> return OIDCManager
+        }
     }
-  }
 }

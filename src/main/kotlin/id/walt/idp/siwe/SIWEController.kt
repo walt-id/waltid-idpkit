@@ -1,7 +1,5 @@
 package id.walt.idp.siwe
 
-import id.walt.idp.nfts.NFTController
-import id.walt.idp.nfts.NFTManager
 import id.walt.idp.oidc.OIDCAuthorizationRole
 import id.walt.idp.oidc.OIDCManager
 import id.walt.idp.oidc.ResponseVerificationResult
@@ -14,7 +12,6 @@ import io.javalin.http.HttpCode
 import io.javalin.plugin.openapi.dsl.document
 import io.javalin.plugin.openapi.dsl.documented
 import javalinjwt.JavalinJWT
-import java.util.HashSet
 
 object SIWEController {
 
@@ -34,34 +31,34 @@ object SIWEController {
             )
         }
 
-    fun siweVerification(ctx: Context){
+    fun siweVerification(ctx: Context) {
 
-        val sessionId = ctx.queryParam("session") ?: throw  BadRequestResponse("Session not specified")
-        val message = ctx.queryParam("message") ?: throw  BadRequestResponse("Message not specified")
-        val signature = ctx.queryParam("signature") ?: throw  BadRequestResponse("Signature not specified")
+        val sessionId = ctx.queryParam("session") ?: throw BadRequestResponse("Session not specified")
+        val message = ctx.queryParam("message") ?: throw BadRequestResponse("Message not specified")
+        val signature = ctx.queryParam("signature") ?: throw BadRequestResponse("Signature not specified")
 
-        val request= SiweRequest(message, signature)
-        val session= OIDCManager.getOIDCSession(sessionId)
+        val request = SiweRequest(message, signature)
+        val session = OIDCManager.getOIDCSession(sessionId)
         val eip4361msg = Eip4361Message.fromString(request.message)
 
         if (session == null) {
-            val uri= SiweManager.generateErrorResponseObject(sessionId, eip4361msg.address, "Invalid or no session was set.")
+            val uri = SiweManager.generateErrorResponseObject(sessionId, eip4361msg.address, "Invalid or no session was set.")
             ctx.status(HttpCode.FOUND).header("Location", uri.toString())
         }
 
-        if (!OIDCManager.AuthorizationMode.SIWE.equals(session?.authorizationMode) ) {
-            val uri= SiweManager.generateErrorResponseObject(sessionId, eip4361msg.address, "Invalid callback.")
+        if (!OIDCManager.AuthorizationMode.SIWE.equals(session?.authorizationMode)) {
+            val uri = SiweManager.generateErrorResponseObject(sessionId, eip4361msg.address, "Invalid callback.")
             ctx.status(HttpCode.FOUND).header("Location", uri.toString())
         }
 
 
-        if(SiweManager.messageAndSignatureVerification(session!!, message, signature)){
-           val siweResponseVerificationResult =SiweResponseVerificationResult(eip4361msg.address, sessionId, true)
-            val responseVerificationResult= ResponseVerificationResult( null,null,siweResponseVerificationResult)
-            val uri= OIDCManager.continueIDPSessionResponse(sessionId, responseVerificationResult)
+        if (SiweManager.messageAndSignatureVerification(session!!, message, signature)) {
+            val siweResponseVerificationResult = SiweResponseVerificationResult(eip4361msg.address, sessionId, true)
+            val responseVerificationResult = ResponseVerificationResult(null, null, siweResponseVerificationResult)
+            val uri = OIDCManager.continueIDPSessionResponse(sessionId, responseVerificationResult)
             ctx.status(HttpCode.FOUND).header("Location", uri.toString())
-        }else{
-            val uri= SiweManager.generateErrorResponseObject(sessionId, eip4361msg.address, "Invalid signature.")
+        } else {
+            val uri = SiweManager.generateErrorResponseObject(sessionId, eip4361msg.address, "Invalid signature.")
             ctx.status(HttpCode.FOUND).header("Location", uri.toString())
         }
 

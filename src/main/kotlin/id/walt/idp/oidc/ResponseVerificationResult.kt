@@ -4,7 +4,10 @@ import id.walt.idp.nfts.NftResponseVerificationResult
 import id.walt.idp.siwe.SiweResponseVerificationResult
 import id.walt.verifier.backend.SIOPResponseVerificationResult
 
-class ResponseVerificationResult(val siopResponseVerificationResult: SIOPResponseVerificationResult?=null, val nftresponseVerificationResult: NftResponseVerificationResult?=null, val siweResponseVerificationResult: SiweResponseVerificationResult?=null
+class ResponseVerificationResult(
+    val siopResponseVerificationResult: SIOPResponseVerificationResult? = null,
+    val nftresponseVerificationResult: NftResponseVerificationResult? = null,
+    val siweResponseVerificationResult: SiweResponseVerificationResult? = null
 ) {
 
     val isValid
