@@ -468,16 +468,20 @@ object OIDCManager : IDPManager {
     }
 
     fun continueIDPSessionResponse(sessionId: String, verificationResult: ResponseVerificationResult): URI {
+        log.debug { "CONTINUE IDP SESSION RESPONSE: $sessionId" }
         val session = getOIDCSession(sessionId) ?: throw BadRequestResponse("OIDC session invalid or expired")
+        log.debug { "Session ID: ${session.id}" }
         if (verificationResult.isValid) {
+            log.debug { "Verification result: OVERALL VALID!" }
             session.verificationResult = verificationResult
             updateOIDCSession(session)
             return URI.create(
                 "${session.authRequest.redirectionURI}" +
                         fragmentOrQuery(session) +
                         generateAuthSuccessResponseFor(session)
-            )
+            ).also { log.debug { "CREATED URI: $it" } }
         } else {
+            log.debug { "Verification result: OVERALL INVALID!" }
             val error = when (session.authorizationMode) {
                 AuthorizationMode.NFT -> verificationResult.nftresponseVerificationResult?.error
                 AuthorizationMode.SIOP -> errorDescriptionFor(verificationResult.siopResponseVerificationResult!!)
