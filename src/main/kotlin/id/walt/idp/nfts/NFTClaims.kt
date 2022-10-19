@@ -14,12 +14,12 @@ data class NftTokenClaim(
     val smartContractAddress: String?,
 )
 
-class NFTClaims (
+class NFTClaims(
     @Json(serializeNull = false) val nft_token: NftTokenClaim? = null,
 ) : OIDCClaimsRequest() {
     override fun toJSONObject(): JSONObject {
         val o = super.toJSONObject()
-        if(nft_token != null) {
+        if (nft_token != null) {
             o.put("nft_token", JSONParser(JSONParser.MODE_PERMISSIVE).parse(klaxon.toJsonString(nft_token)))
         }
         return o

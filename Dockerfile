@@ -1,4 +1,4 @@
-FROM openjdk:17-jdk-slim as buildstage
+FROM docker.io/openjdk:17-slim-buster as buildstage
 RUN apt-get update && apt-get install -y git nodejs npm && npm install -g yarn
 COPY ./ /
 RUN ./gradlew installDist

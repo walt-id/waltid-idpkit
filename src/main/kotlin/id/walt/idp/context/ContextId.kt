@@ -1,7 +1,7 @@
 package id.walt.idp.context
 
 enum class ContextId {
-  OIDC,
-  SIOP,
-  NFT
+    OIDC,
+    SIOP,
+    NFT
 }
