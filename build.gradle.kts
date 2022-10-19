@@ -10,6 +10,7 @@ group = "id.walt"
 version = "1.0-SNAPSHOT"
 
 repositories {
+    mavenLocal()
     mavenCentral()
     maven("https://jitpack.io")
     maven("https://maven.walt.id/repository/waltid/")
@@ -17,7 +18,6 @@ repositories {
 
     maven("https://maven.walt.id/repository/danubetech")
 
-    mavenLocal()
     maven("https://repo.danubetech.com/repository/maven-public/")
 }
 
