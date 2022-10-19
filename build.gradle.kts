@@ -25,8 +25,8 @@ dependencies {
     implementation(kotlin("stdlib"))
     implementation("io.javalin:javalin-bundle:4.6.6")
     implementation("com.github.kmehrunes:javalin-jwt:0.3")
-    implementation("com.beust:klaxon:5.5")
-    implementation("com.nimbusds:oauth2-oidc-sdk:9.27")
+    implementation("com.beust:klaxon:5.6")
+    implementation("com.nimbusds:oauth2-oidc-sdk:9.41")
 
     // CLI
     implementation("com.github.ajalt.clikt:clikt-jvm:3.5.0")
