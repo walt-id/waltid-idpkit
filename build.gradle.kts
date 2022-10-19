@@ -47,9 +47,9 @@ dependencies {
     implementation("id.walt:waltid-siwe:0.1.0")
 
     // Logging
-    implementation("org.slf4j:slf4j-api:2.0.0-alpha6")
-    implementation("org.slf4j:slf4j-simple:2.0.0-alpha6")
-    implementation("io.github.microutils:kotlin-logging-jvm:2.1.21")
+    implementation("org.slf4j:slf4j-api:2.0.3")
+    implementation("org.slf4j:slf4j-simple:2.0.3")
+    implementation("io.github.microutils:kotlin-logging-jvm:3.0.0")
 
     //JSON
     implementation("com.jayway.jsonpath:json-path:2.7.0")
