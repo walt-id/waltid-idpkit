@@ -385,13 +385,17 @@ object OIDCManager : IDPManager {
     )
 
     fun authorizeClient(clientID: String, clientSecret: String): Boolean {
+        log.debug { "Trying to authorize clientId $clientID" }
         return OIDCClientRegistry.getClient(clientID).map { clientInfo ->
+            log.debug { "clientInfoId: ${clientInfo.id.value}, clientId: $clientID" }
+            log.debug { "clientsecret: ${clientInfo.secret.value}, clientSecret: $clientSecret" }
             clientInfo.id.value == clientID && clientInfo.secret.value == clientSecret && !clientInfo.secret.expired()
         }.orElse(false)
     }
 
     fun verifyClientRedirectUri(clientID: String, redirectUri: String): Boolean {
         return OIDCClientRegistry.getClient(clientID).map { clientInfo ->
+            //clientInfo.metadata.redirect
             clientInfo.id.value == clientID && (clientInfo.metadata.redirectionURIStrings.contains(redirectUri) || clientInfo.metadata.customFields[OIDCClientRegistry.ALL_REDIRECT_URIS]?.toString()
                 .toBoolean())
         }.orElse(false)
