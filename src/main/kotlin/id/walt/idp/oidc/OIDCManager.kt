@@ -35,17 +35,20 @@ import id.walt.idp.siop.SIOPState
 import id.walt.idp.siwe.SiweManager
 import id.walt.idp.util.WaltIdAlgorithm
 import id.walt.model.dif.*
+import id.walt.model.oidc.klaxon
 import id.walt.nftkit.services.Chain
 import id.walt.services.key.KeyFormat
 import id.walt.services.key.KeyService
 import id.walt.services.keystore.KeyType
 import id.walt.services.oidc.OIDCUtils
 import id.walt.siwe.configuration.SiweSession
+import id.walt.verifier.backend.PresentationRequestInfo
 import id.walt.verifier.backend.SIOPResponseVerificationResult
 import id.walt.verifier.backend.VerifierConfig
 import id.walt.verifier.backend.VerifierManager
 import id.walt.webwallet.backend.context.WalletContextManager
 import io.javalin.http.BadRequestResponse
+import io.javalin.http.Context
 import io.javalin.http.ForbiddenResponse
 import io.javalin.http.InternalServerErrorResponse
 import javalinjwt.JWTProvider
@@ -60,8 +63,13 @@ import java.util.concurrent.*
 object OIDCManager : IDPManager {
     const val NEW_CLIENT_REGISTRATION_ID = "_IDP_KIT_NEW_CLIENT_"
     val EXPIRATION_TIME: Duration = Duration.ofMinutes(5)
+
     private val sessionCache: Cache<String, OIDCSession> =
         CacheBuilder.newBuilder().expireAfterAccess(EXPIRATION_TIME.seconds, TimeUnit.SECONDS).build()
+    private val requestCache: Cache<String, PresentationRequestInfo> =
+        CacheBuilder.newBuilder().expireAfterAccess(EXPIRATION_TIME.seconds, TimeUnit.SECONDS).build()
+
+
     private val log = KotlinLogging.logger {}
 
     enum class AuthorizationMode {
@@ -251,6 +259,16 @@ object OIDCManager : IDPManager {
 
     private const val OIDC_API_PATH: String = "api/oidc"
     val OIDCApiUrl: String get() = "${IDPConfig.config.externalUrl}/$OIDC_API_PATH"
+
+    fun getIdpKitOpenIdRequestUri(ctx: Context) {
+        val state = ctx.queryParam("state") ?: throw IllegalStateException("No state supplied")
+        val request = requestCache.getIfPresent(state) ?: throw IllegalStateException("State not known")
+
+        val reqJson = klaxon.toJsonString(request)
+
+        ctx.result(reqJson).contentType("application/json")
+        // ctx.json(...)
+    }
 
     fun getWalletRedirectionUri(session: OIDCSession): URI {
 
