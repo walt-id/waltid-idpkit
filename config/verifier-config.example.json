@@ -1,0 +1,18 @@
+{
+    "verifierUiUrl": "http://localhost:8080",
+    "verifierApiUrl": "http://localhost:8080/api/siop",
+    "additionalPolicies": [
+        {
+            "policy": "EUPolicy"
+        }
+    ],
+    "wallets": {
+        "walt.id": {
+            "id": "walt.id",
+            "url": "https://wallet.walt-test.cloud",
+            "presentPath": "api/siop/initiatePresentation/",
+            "receivePath" : "api/siop/initiateIssuance/",
+            "description": "walt.id web wallet"
+        }
+    }
+}
