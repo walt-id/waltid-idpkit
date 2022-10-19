@@ -56,11 +56,11 @@ dependencies {
 
     // Testing
     //testImplementation(kotlin("test-junit"))
-    testImplementation("io.mockk:mockk:1.12.4")
+    testImplementation("io.mockk:mockk:1.13.2")
 
-    testImplementation("io.kotest:kotest-runner-junit5:5.4.2")
-    testImplementation("io.kotest:kotest-assertions-core:5.4.2")
-    testImplementation("io.kotest:kotest-assertions-json:5.4.2")
+    testImplementation("io.kotest:kotest-runner-junit5:5.5.0")
+    testImplementation("io.kotest:kotest-assertions-core:5.5.0")
+    testImplementation("io.kotest:kotest-assertions-json:5.5.0")
 
     // NftKit
     implementation("id.walt:waltid-nftkit:1.0.0")
