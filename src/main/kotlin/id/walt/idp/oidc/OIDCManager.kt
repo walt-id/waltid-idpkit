@@ -444,14 +444,18 @@ object OIDCManager : IDPManager {
         //no modification on that function. Just, SIOPResponseVerificationResult -> ResponseVerificationResult
         val session = getOIDCSession(sessionId) ?: throw BadRequestResponse("OIDC session invalid or expired")
         if (verificationResult.isValid) {
+            log.debug { "Verification result: OVERALL VALID!" }
             session.verificationResult = ResponseVerificationResult(verificationResult)
             updateOIDCSession(session)
-            return URI.create(
+            val uri = URI.create(
                 "${session.authRequest.redirectionURI}" +
                         fragmentOrQuery(session) +
                         generateAuthSuccessResponseFor(session)
-            )
+            ).also { log.debug { "CREATED URI: $it" } }
+            println(uri)
+            return uri
         } else {
+            log.debug { "Verification result: OVERALL INVALID!" }
             return URI.create(
                 "${session.authRequest.redirectionURI}" +
                         fragmentOrQuery(session) +
