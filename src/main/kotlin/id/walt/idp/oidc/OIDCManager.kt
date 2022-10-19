@@ -272,19 +272,36 @@ object OIDCManager : IDPManager {
 
     fun getWalletRedirectionUri(session: OIDCSession): URI {
 
-        if (session.authorizationMode.equals(AuthorizationMode.SIOP)) {
-            val walletUrl = URI.create("${session.wallet.url}/${session.wallet.presentPath}")
-            val siopReq = VerifierManager.getService().newRequest(
-                walletUrl = walletUrl,
-                presentationDefinition = session.presentationDefinition!!,
-                state = SIOPState(idpType, session.id).encode()
-            )
-            return siopReq.toURI()
-        } else if (AuthorizationMode.NFT.equals(session.authorizationMode)) {
-            return URI.create("${session.wallet.url}?session=${session.id}&nonce=${session.siweSession?.nonce}&redirect_uri=${NFTManager.NFTApiUrl}/callback")
-        } else {
-            return URI.create("${session.wallet.url}?session=${session.id}&nonce=${session.siweSession?.nonce}&redirect_uri=${SiweManager.SIWEApiUrl}/callback")
+        when (session.authorizationMode) {
+            AuthorizationMode.SIOP -> {
+                val walletUrl = URI.create("${session.wallet.url}/${session.wallet.presentPath}")
+                val siopReq = VerifierManager.getService().newRequest(
+                    walletUrl = walletUrl,
+                    presentationDefinition = session.presentationDefinition!!,
+                    //state = session.id
+                    state = SIOPState(idpType, session.id).encode()
+                )
 
+                val presReq = PresentationRequestInfo(siopReq.state.value, siopReq.toURI().toString())
+                requestCache.put(siopReq.state.value, presReq)
+
+                return URI.create("http://localhost:3000/sharecredential/${siopReq.state.value}")
+
+                //return siopReq.toURI().also { log.debug { "request redirect url is: $it" } }
+
+                //println( siopReq.endpointURI)
+                //println( siopReq.toQueryString())
+                //println("URL IS ${siopReq.toHTTPRequest().uri}")
+                //return siopReq.toHTTPRequest().uri
+            }
+
+            AuthorizationMode.NFT -> {
+                return URI.create("${session.wallet.url}?session=${session.id}&nonce=${session.siweSession?.nonce}&redirect_uri=${NFTManager.NFTApiUrl}/callback")
+            }
+
+            AuthorizationMode.SIWE -> {
+                return URI.create("${session.wallet.url}?session=${session.id}&nonce=${session.siweSession?.nonce}&redirect_uri=${SiweManager.SIWEApiUrl}/callback")
+            }
         }
     }
 
