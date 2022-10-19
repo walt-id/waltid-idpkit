@@ -15,6 +15,7 @@ class WaltIdAlgorithm(private val keyId: KeyId, private val context: Context, al
       KeyAlgorithm.EdDSA_Ed25519 -> "EdDSA"
       KeyAlgorithm.ECDSA_Secp256k1 -> "ES256K"
       KeyAlgorithm.RSA -> "RS256"
+      KeyAlgorithm.ECDSA_Secp256r1 -> "ES256"
     }, "Use key from SSIKit key service") {
   override fun verify(jwt: DecodedJWT?) {
     if(!WalletContextManager.runWith(context) {
