@@ -35,17 +35,20 @@ import id.walt.idp.siop.SIOPState
 import id.walt.idp.siwe.SiweManager
 import id.walt.idp.util.WaltIdAlgorithm
 import id.walt.model.dif.*
+import id.walt.model.oidc.klaxon
 import id.walt.nftkit.services.Chain
 import id.walt.services.key.KeyFormat
 import id.walt.services.key.KeyService
 import id.walt.services.keystore.KeyType
 import id.walt.services.oidc.OIDCUtils
 import id.walt.siwe.configuration.SiweSession
+import id.walt.verifier.backend.PresentationRequestInfo
 import id.walt.verifier.backend.SIOPResponseVerificationResult
 import id.walt.verifier.backend.VerifierConfig
 import id.walt.verifier.backend.VerifierManager
 import id.walt.webwallet.backend.context.WalletContextManager
 import io.javalin.http.BadRequestResponse
+import io.javalin.http.Context
 import io.javalin.http.ForbiddenResponse
 import io.javalin.http.InternalServerErrorResponse
 import javalinjwt.JWTProvider
@@ -60,8 +63,13 @@ import java.util.concurrent.*
 object OIDCManager : IDPManager {
     const val NEW_CLIENT_REGISTRATION_ID = "_IDP_KIT_NEW_CLIENT_"
     val EXPIRATION_TIME: Duration = Duration.ofMinutes(5)
+
     private val sessionCache: Cache<String, OIDCSession> =
         CacheBuilder.newBuilder().expireAfterAccess(EXPIRATION_TIME.seconds, TimeUnit.SECONDS).build()
+    private val requestCache: Cache<String, PresentationRequestInfo> =
+        CacheBuilder.newBuilder().expireAfterAccess(EXPIRATION_TIME.seconds, TimeUnit.SECONDS).build()
+
+
     private val log = KotlinLogging.logger {}
 
     enum class AuthorizationMode {
@@ -252,21 +260,48 @@ object OIDCManager : IDPManager {
     private const val OIDC_API_PATH: String = "api/oidc"
     val OIDCApiUrl: String get() = "${IDPConfig.config.externalUrl}/$OIDC_API_PATH"
 
+    fun getIdpKitOpenIdRequestUri(ctx: Context) {
+        val state = ctx.queryParam("state") ?: throw IllegalStateException("No state supplied")
+        val request = requestCache.getIfPresent(state) ?: throw IllegalStateException("State not known")
+
+        val reqJson = klaxon.toJsonString(request)
+
+        ctx.result(reqJson).contentType("application/json")
+        // ctx.json(...)
+    }
+
     fun getWalletRedirectionUri(session: OIDCSession): URI {
 
-        if (session.authorizationMode.equals(AuthorizationMode.SIOP)) {
-            val walletUrl = URI.create("${session.wallet.url}/${session.wallet.presentPath}")
-            val siopReq = VerifierManager.getService().newRequest(
-                walletUrl = walletUrl,
-                presentationDefinition = session.presentationDefinition!!,
-                state = SIOPState(idpType, session.id).encode()
-            )
-            return siopReq.toURI()
-        } else if (AuthorizationMode.NFT.equals(session.authorizationMode)) {
-            return URI.create("${session.wallet.url}?session=${session.id}&nonce=${session.siweSession?.nonce}&redirect_uri=${NFTManager.NFTApiUrl}/callback")
-        } else {
-            return URI.create("${session.wallet.url}?session=${session.id}&nonce=${session.siweSession?.nonce}&redirect_uri=${SiweManager.SIWEApiUrl}/callback")
+        when (session.authorizationMode) {
+            AuthorizationMode.SIOP -> {
+                val walletUrl = URI.create("${session.wallet.url}/${session.wallet.presentPath}")
+                val siopReq = VerifierManager.getService().newRequest(
+                    walletUrl = walletUrl,
+                    presentationDefinition = session.presentationDefinition!!,
+                    //state = session.id
+                    state = SIOPState(idpType, session.id).encode()
+                )
 
+                val presReq = PresentationRequestInfo(siopReq.state.value, siopReq.toURI().toString())
+                requestCache.put(siopReq.state.value, presReq)
+
+                return URI.create("http://localhost:3000/sharecredential/${siopReq.state.value}")
+
+                //return siopReq.toURI().also { log.debug { "request redirect url is: $it" } }
+
+                //println( siopReq.endpointURI)
+                //println( siopReq.toQueryString())
+                //println("URL IS ${siopReq.toHTTPRequest().uri}")
+                //return siopReq.toHTTPRequest().uri
+            }
+
+            AuthorizationMode.NFT -> {
+                return URI.create("${session.wallet.url}?session=${session.id}&nonce=${session.siweSession?.nonce}&redirect_uri=${NFTManager.NFTApiUrl}/callback")
+            }
+
+            AuthorizationMode.SIWE -> {
+                return URI.create("${session.wallet.url}?session=${session.id}&nonce=${session.siweSession?.nonce}&redirect_uri=${SiweManager.SIWEApiUrl}/callback")
+            }
         }
     }
 
@@ -350,13 +385,17 @@ object OIDCManager : IDPManager {
     )
 
     fun authorizeClient(clientID: String, clientSecret: String): Boolean {
+        log.debug { "Trying to authorize clientId $clientID" }
         return OIDCClientRegistry.getClient(clientID).map { clientInfo ->
+            log.debug { "clientInfoId: ${clientInfo.id.value}, clientId: $clientID" }
+            log.debug { "clientsecret: ${clientInfo.secret.value}, clientSecret: $clientSecret" }
             clientInfo.id.value == clientID && clientInfo.secret.value == clientSecret && !clientInfo.secret.expired()
         }.orElse(false)
     }
 
     fun verifyClientRedirectUri(clientID: String, redirectUri: String): Boolean {
         return OIDCClientRegistry.getClient(clientID).map { clientInfo ->
+            //clientInfo.metadata.redirect
             clientInfo.id.value == clientID && (clientInfo.metadata.redirectionURIStrings.contains(redirectUri) || clientInfo.metadata.customFields[OIDCClientRegistry.ALL_REDIRECT_URIS]?.toString()
                 .toBoolean())
         }.orElse(false)
@@ -444,14 +483,18 @@ object OIDCManager : IDPManager {
         //no modification on that function. Just, SIOPResponseVerificationResult -> ResponseVerificationResult
         val session = getOIDCSession(sessionId) ?: throw BadRequestResponse("OIDC session invalid or expired")
         if (verificationResult.isValid) {
+            log.debug { "Verification result: OVERALL VALID!" }
             session.verificationResult = ResponseVerificationResult(verificationResult)
             updateOIDCSession(session)
-            return URI.create(
+            val uri = URI.create(
                 "${session.authRequest.redirectionURI}" +
                         fragmentOrQuery(session) +
                         generateAuthSuccessResponseFor(session)
-            )
+            ).also { log.debug { "CREATED URI: $it" } }
+            println(uri)
+            return uri
         } else {
+            log.debug { "Verification result: OVERALL INVALID!" }
             return URI.create(
                 "${session.authRequest.redirectionURI}" +
                         fragmentOrQuery(session) +
@@ -468,16 +511,20 @@ object OIDCManager : IDPManager {
     }
 
     fun continueIDPSessionResponse(sessionId: String, verificationResult: ResponseVerificationResult): URI {
+        log.debug { "CONTINUE IDP SESSION RESPONSE: $sessionId" }
         val session = getOIDCSession(sessionId) ?: throw BadRequestResponse("OIDC session invalid or expired")
+        log.debug { "Session ID: ${session.id}" }
         if (verificationResult.isValid) {
+            log.debug { "Verification result: OVERALL VALID!" }
             session.verificationResult = verificationResult
             updateOIDCSession(session)
             return URI.create(
                 "${session.authRequest.redirectionURI}" +
                         fragmentOrQuery(session) +
                         generateAuthSuccessResponseFor(session)
-            )
+            ).also { log.debug { "CREATED URI: $it" } }
         } else {
+            log.debug { "Verification result: OVERALL INVALID!" }
             val error = when (session.authorizationMode) {
                 AuthorizationMode.NFT -> verificationResult.nftresponseVerificationResult?.error
                 AuthorizationMode.SIOP -> errorDescriptionFor(verificationResult.siopResponseVerificationResult!!)

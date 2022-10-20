@@ -195,6 +195,7 @@ object OIDCController {
             kotlin.runCatching {
                 AuthorizationRequest.parse(ServletUtils.createHTTPRequest(ctx.req))
             }.getOrElse {
+                it.printStackTrace()
                 throw BadRequestResponse("Error parsing OIDC authorization request from query parameters")
             }
         )
@@ -204,16 +205,20 @@ object OIDCController {
 
     private fun tokenRequest(ctx: Context) {
         val tokenReq = kotlin.runCatching { TokenRequest.parse(ServletUtils.createHTTPRequest(ctx.req)) }
-            .getOrElse { throw BadRequestResponse(it.message ?: "Failed to parse token request") }
+            .getOrElse { it.printStackTrace()
+                throw BadRequestResponse(it.message ?: "Failed to parse token request") }
         if (tokenReq.authorizationGrant.type != GrantType.AUTHORIZATION_CODE) throw BadRequestResponse("Unsupported authorization grant type")
         val code = (tokenReq.authorizationGrant as AuthorizationCodeGrant).authorizationCode.value
         val redirectUri = (tokenReq.authorizationGrant as AuthorizationCodeGrant).redirectionURI.toString()
         val idpClient = getIDPClient(ctx)
         if (!OIDCManager.verifyClientRedirectUri(
-                idpClient.id.value,
-                redirectUri
+                clientID = idpClient.id.value,
+                redirectUri = redirectUri
             )
-        ) throw ForbiddenResponse("redirect_uri not allowed for client")
+        ) {
+            println("REDIRECT_URI NOT ALLOWED FOR ${idpClient.id.value}: $redirectUri")
+            throw ForbiddenResponse("redirect_uri not allowed for client")
+        }
         ctx.json(
             OIDCManager.getTokensFor(code, redirectUri).toJSONObject()
         )
@@ -222,7 +227,9 @@ object OIDCController {
     private fun userInfoRequest(ctx: Context) {
         val session = kotlin.runCatching {
             OIDCManager.decodeAccessToken(JavalinJWT.getDecodedFromContext(ctx))
-        }.getOrElse { exc -> throw BadRequestResponse(exc.message ?: "Bad request") }
+        }.getOrElse { exc ->
+            exc.printStackTrace()
+            throw BadRequestResponse(exc.message ?: "Bad request") }
         val verificationResult = session.verificationResult ?: throw BadRequestResponse("Session not yet verified")
         if (!verificationResult.isValid) throw BadRequestResponse("Session could not be verified")
 
@@ -253,6 +260,7 @@ object OIDCController {
                 clientInfo.toJSONObject()
             )
         } catch (exc: Exception) {
+            exc.printStackTrace()
             ctx.status(HttpCode.BAD_REQUEST)
                 .json(RegistrationError.INVALID_CLIENT_METADATA.setDescription(exc.message).toJSONObject())
         }
@@ -286,6 +294,7 @@ object OIDCController {
                 updatedInfo.toJSONObject()
             )
         } catch (exc: Exception) {
+            exc.printStackTrace()
             ctx.status(HttpCode.BAD_REQUEST)
                 .json(RegistrationError.INVALID_CLIENT_METADATA.setDescription(exc.message).toJSONObject())
         }

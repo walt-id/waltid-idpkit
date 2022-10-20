@@ -20,11 +20,12 @@ data class NFTConfig(
 
         init {
             val cf = File(CONFIG_FILE)
-            if (cf.exists()) {
-                config = Klaxon().fieldConverter(ExternalHostnameUrl::class, externalHostnameUrlValueConverter).parse(cf)
+
+            config = if (cf.exists()) {
+                Klaxon().fieldConverter(ExternalHostnameUrl::class, externalHostnameUrlValueConverter).parse(cf)
                     ?: NFTConfig()
             } else {
-                config = NFTConfig()
+                NFTConfig()
             }
         }
     }

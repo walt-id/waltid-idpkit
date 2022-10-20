@@ -10,6 +10,7 @@ group = "id.walt"
 version = "1.0-SNAPSHOT"
 
 repositories {
+    mavenLocal()
     mavenCentral()
     maven("https://jitpack.io")
     maven("https://maven.walt.id/repository/waltid/")
@@ -17,16 +18,15 @@ repositories {
 
     maven("https://maven.walt.id/repository/danubetech")
 
-    mavenLocal()
     maven("https://repo.danubetech.com/repository/maven-public/")
 }
 
 dependencies {
     implementation(kotlin("stdlib"))
-    implementation("io.javalin:javalin-bundle:4.3.0")
+    implementation("io.javalin:javalin-bundle:4.6.6")
     implementation("com.github.kmehrunes:javalin-jwt:0.3")
-    implementation("com.beust:klaxon:5.5")
-    implementation("com.nimbusds:oauth2-oidc-sdk:9.27")
+    implementation("com.beust:klaxon:5.6")
+    implementation("com.nimbusds:oauth2-oidc-sdk:9.41")
 
     // CLI
     implementation("com.github.ajalt.clikt:clikt-jvm:3.5.0")
@@ -47,26 +47,23 @@ dependencies {
     implementation("id.walt:waltid-siwe:0.1.0")
 
     // Logging
-    implementation("org.slf4j:slf4j-api:2.0.0-alpha6")
-    implementation("org.slf4j:slf4j-simple:2.0.0-alpha6")
-    implementation("io.github.microutils:kotlin-logging-jvm:2.1.21")
+    implementation("org.slf4j:slf4j-api:2.0.3")
+    implementation("org.slf4j:slf4j-simple:2.0.3")
+    implementation("io.github.microutils:kotlin-logging-jvm:3.0.0")
 
     //JSON
     implementation("com.jayway.jsonpath:json-path:2.7.0")
 
     // Testing
     //testImplementation(kotlin("test-junit"))
-    testImplementation("io.mockk:mockk:1.12.4")
+    testImplementation("io.mockk:mockk:1.13.2")
 
-    testImplementation("io.kotest:kotest-runner-junit5:5.4.2")
-    testImplementation("io.kotest:kotest-assertions-core:5.4.2")
-    testImplementation("io.kotest:kotest-assertions-json:5.4.2")
+    testImplementation("io.kotest:kotest-runner-junit5:5.5.0")
+    testImplementation("io.kotest:kotest-assertions-core:5.5.0")
+    testImplementation("io.kotest:kotest-assertions-json:5.5.0")
 
     // NftKit
     implementation("id.walt:waltid-nftkit:1.0.0")
-
-    // Web UI
-    implementation(project(":web:waltid-idpkit-ui"))
 }
 
 tasks.withType<KotlinCompile> {
