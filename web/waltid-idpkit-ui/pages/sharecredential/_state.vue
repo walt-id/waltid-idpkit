@@ -6,7 +6,7 @@
             </div>
 
             <div class="text-center">
-                <a class="btn btn-success" href="web">Click to login with Web Wallet</a>
+                <a class="btn btn-success" v-on:click="redirectToWebWallet">Click to login with Web Wallet</a>
             </div>
 
             <hr>
@@ -37,13 +37,13 @@ export default {
         const requestInfo = await $axios.$get('/api/openIdRequestUri?state=' + route.params.state)
 
         let reqTimer = setInterval(async () => {
-          let response = await fetch("/verifier-api/verify/isVerified?state=" + requestInfo.requestId);
+            let response = await fetch("/verifier-api/verify/isVerified?state=" + requestInfo.requestId);
 
-          if (response.status === 200) {
-            window.clearTimeout(reqTimer);
+            if (response.status === 200) {
+                window.clearTimeout(reqTimer);
 
-            window.location = await response.text();
-          }
+                window.location = await response.text();
+            }
         }, 1000)
 
         console.log(requestInfo)
@@ -56,11 +56,19 @@ export default {
             size: 300
         })
     },
+    methods: {
+        redirectToWebWallet: function() {
+
+            let reqUrl = this.requestInfo.url
+            let reqParams = reqUrl.substring(reqUrl.indexOf('?'), reqUrl.length - 1)
+            let fullUrl = "https://wallet.walt-test.cloud/api/siop/initiatePresentation/?" + reqParams
+            console.log("Full url: " + fullUrl)
+
+            window.location = fullUrl
+        }
+    }
 }
 </script>
 
 <style>
-.menu-link {
-    color: white;
-}
 </style>
