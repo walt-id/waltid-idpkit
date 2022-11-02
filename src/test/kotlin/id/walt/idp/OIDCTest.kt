@@ -46,197 +46,228 @@ import io.mockk.mockkObject
 import java.net.URI
 import java.util.*
 
-class OIDCTest: OIDCTestBase() {
+class OIDCTest : OIDCTestBase() {
 
-  private lateinit var DID: String
-  private lateinit var VC: String
-  private val APP_REDIRECT: URI = URI.create("http://app")
-  private val CLIENT_ID = "test-client"
-  private val CLIENT_SECRET = "test-secret"
+    private lateinit var DID: String
+    private lateinit var VC: String
+    private val APP_REDIRECT: URI = URI.create("http://app")
+    private val CLIENT_ID = "test-client"
+    private val CLIENT_SECRET = "test-secret"
 
-  override fun customInit() {
-    mockkObject(OIDCClientRegistry)
-    every { OIDCClientRegistry.load(CLIENT_ID) } returns Optional.of(ClientInformation(ClientID(CLIENT_ID), Date(),
-      ClientMetadata().apply {
-        redirectionURI = APP_REDIRECT
-    }, Secret(CLIENT_SECRET)))
+    override fun customInit() {
+        mockkObject(OIDCClientRegistry)
+        every { OIDCClientRegistry.load(CLIENT_ID) } returns Optional.of(ClientInformation(ClientID(CLIENT_ID), Date(),
+            ClientMetadata().apply {
+                redirectionURI = APP_REDIRECT
+            }, Secret(CLIENT_SECRET)
+        )
+        )
 
-    DID = DidService.create(DidMethod.key)
-    VC = Signatory.getService().issue("VerifiableId", ProofConfig(DID, DID, proofType = ProofType.LD_PROOF))
-  }
-
-
-  private fun simulateAuthReqToAppRedirect(
-    authReq: AuthorizationRequest,
-    targetWallet: WalletConfiguration,
-    oidcMeta: OIDCProviderMetadata
-  ): URI {
-
-    oidcMeta.scopes shouldContain OIDCScopeValue.OPENID
-    oidcMeta.scopes shouldContainAll authReq.scope
-    oidcMeta.claims shouldContain "vp_token"
-
-    // APP: init oidc session (par request)
-    val parHTTPResponse =
-      PushedAuthorizationRequest(oidcMeta.pushedAuthorizationRequestEndpointURI, authReq).toHTTPRequest().apply {
-        authorization = ClientSecretBasic(ClientID(CLIENT_ID), Secret(CLIENT_SECRET)).toHTTPAuthorizationHeader()
-      }.send()
-
-    parHTTPResponse.statusCode shouldBe HttpCode.CREATED.status
-
-    val parResponse = PushedAuthorizationResponse.parse(parHTTPResponse)
-
-    // APP: redirect to authorization endpoint on IDP
-    val authHttpResponse = AuthorizationRequest.Builder(parResponse.toSuccessResponse().requestURI, ClientID(CLIENT_ID))
-      .endpointURI(oidcMeta.authorizationEndpointURI)
-      .build().toHTTPRequest().apply {
-        followRedirects = false
-      }.send()
-
-    // IDP: redirects to WALLET
-    authHttpResponse.statusCode shouldBe HttpCode.FOUND.status
-    authHttpResponse.location.authority shouldBe URI.create(targetWallet.url).authority
-    authHttpResponse.location.path.trim('/') shouldBe targetWallet.presentPath.trim('/')
-
-    // WALLET: parse SIOP request
-    val siopReq = AuthorizationRequest.parse(authHttpResponse.location)
-    val presentationDef = shouldNotThrowAny { OIDC4VPService.getPresentationDefinition(siopReq) }
-    presentationDef.input_descriptors shouldNot beEmpty()
-    siopReq.customParameters shouldContainKey "nonce"
-
-    // WALLET: fulfill SIOP request on IDP
-    val presentation =
-      Custodian.getService().createPresentation(listOf(VC), DID, challenge = siopReq.customParameters["nonce"]!!.first(), expirationDate = null)
-        .toCredential() as VerifiablePresentation
-    val siopResponse = OIDC4VPService.getSIOPResponseFor(siopReq, DID, listOf(presentation))
-
-    // IDP: redirects to APP with authorization code
-    return URI.create(OIDC4VPService.postSIOPResponse(siopReq, siopResponse))
-  }
-
-  @Test
-  fun testGetVpTokenCodeFlow() {
-    val targetWallet = VerifierConfig.config.wallets.values.first()
-    // APP: get oidc discovery document
-    val metadata = shouldNotThrowAny { OIDCProviderMetadata.resolve(Issuer(OIDC_URI)) }
-    // APP: init oidc session (par request)
-    val authReq = AuthorizationRequest.Builder(ResponseType.CODE, ClientID(CLIENT_ID))
-      .scope(Scope(OIDCScopeValue.OPENID))
-      .customParameter("claims", VCClaims(
-      vp_token = VpTokenClaim(PresentationDefinition( "1",
-        listOf(
-          InputDescriptor(schema = VCSchema(uri = VcTemplateManager.loadTemplate("VerifiableId").credentialSchema!!.id))
-        )))
-    ).toJSONString())
-      .customParameter("walletId", targetWallet.id)
-      .state(State("TEST"))
-      .redirectionURI(APP_REDIRECT)
-      .build()
-
-    // IDP: redirects to APP with authorization code
-    val redirectToAPP = simulateAuthReqToAppRedirect(authReq, targetWallet, metadata)
-    redirectToAPP.query shouldContain "state=TEST"
-    redirectToAPP.query shouldContain "code="
-
-    // APP: parse authorization code
-    val code = OIDCUtils.getCodeFromRedirectUri(redirectToAPP)
-    code shouldNotBe null
-
-    // APP: get access token
-    val tokenHttpResponse = TokenRequest(metadata.tokenEndpointURI, ClientID(CLIENT_ID), AuthorizationCodeGrant(AuthorizationCode(code), APP_REDIRECT)).toHTTPRequest().apply {
-      authorization = ClientSecretBasic(ClientID(CLIENT_ID), Secret(CLIENT_SECRET)).toHTTPAuthorizationHeader()
-    }.send()
-    val tokenResponse = OIDCTokenResponse.parse(tokenHttpResponse)
-
-    tokenResponse.indicatesSuccess() shouldBe true
-    tokenResponse.oidcTokens.idToken.jwtClaimsSet.claims shouldNotContainKey  "vp_token"
-    tokenResponse.oidcTokens.idToken.jwtClaimsSet.subject shouldBe DID
-
-    // APP: get userInfo
-    val userInfoHttpResponse = UserInfoRequest(metadata.userInfoEndpointURI, tokenResponse.toSuccessResponse().tokens.accessToken).toHTTPRequest().send()
-    userInfoHttpResponse.indicatesSuccess() shouldBe true
-
-    val userInfoResponse = UserInfoResponse.parse(userInfoHttpResponse)
-    userInfoResponse.toSuccessResponse().userInfo.subject.value shouldBe DID
-
-    val vpToken = userInfoResponse.toSuccessResponse().userInfo.getStringListClaim("vp_token")
-    vpToken shouldNotBe null
-  }
-
-  @Test
-  fun testGetVpTokenInIdToken() {
-    val targetWallet = VerifierConfig.config.wallets.values.first()
-    // APP: get oidc discovery document
-    val metadata = shouldNotThrowAny { OIDCProviderMetadata.resolve(Issuer(OIDC_URI)) }
-    // APP: init oidc session (par request)
-    val authReq = AuthorizationRequest.Builder(ResponseType.IDTOKEN, ClientID(CLIENT_ID))
-      .scope(Scope(OIDCScopeValue.OPENID))
-      .customParameter("claims", VCClaims(
-        vp_token = VpTokenClaim(PresentationDefinition( "1",
-          listOf(
-            InputDescriptor(schema = VCSchema(uri = VcTemplateManager.loadTemplate("VerifiableId").credentialSchema!!.id))
-          )))
-      ).toJSONString())
-      .customParameter("walletId", targetWallet.id)
-      .state(State("TEST"))
-      .redirectionURI(APP_REDIRECT)
-      .build()
-
-    // IDP: redirects to APP with authorization code
-    val redirectToAPP = simulateAuthReqToAppRedirect(authReq, targetWallet, metadata)
-    redirectToAPP.fragment shouldNotBe null
-    redirectToAPP.fragment shouldContain "id_token="
-    val authResp = AuthenticationResponseParser.parse(redirectToAPP)
-    authResp.toSuccessResponse().idToken.jwtClaimsSet.subject shouldBe DID
-    authResp.toSuccessResponse().idToken.jwtClaimsSet.claims shouldContainKey "vp_token"
-  }
+        DID = DidService.create(DidMethod.key)
+        VC = Signatory.getService().issue("VerifiableId", ProofConfig(DID, DID, proofType = ProofType.LD_PROOF))
+    }
 
 
-  @Test
-  fun testGetProfileScopeCodeFlow() {
-    val targetWallet = VerifierConfig.config.wallets.values.first()
-    // APP: get oidc discovery document
-    val metadata = shouldNotThrowAny { OIDCProviderMetadata.resolve(Issuer(OIDC_URI)) }
-    // APP: init oidc session (par request)
-    val authReq = AuthorizationRequest.Builder(ResponseType.CODE, ClientID(CLIENT_ID))
-      .scope(Scope(OIDCScopeValue.OPENID, OIDCScopeValue.PROFILE))
-      .customParameter("walletId", targetWallet.id)
-      .state(State("TEST"))
-      .redirectionURI(APP_REDIRECT)
-      .build()
+    private fun simulateAuthReqToAppRedirect(
+        authReq: AuthorizationRequest,
+        targetWallet: WalletConfiguration,
+        oidcMeta: OIDCProviderMetadata
+    ): URI {
 
-    // IDP: redirects to APP with authorization code
-    val redirectToAPP = simulateAuthReqToAppRedirect(authReq, targetWallet, metadata)
-    redirectToAPP.query shouldContain "state=TEST"
-    redirectToAPP.query shouldContain "code="
+        oidcMeta.scopes shouldContain OIDCScopeValue.OPENID
+        oidcMeta.scopes shouldContainAll authReq.scope
+        oidcMeta.claims shouldContain "vp_token"
 
-    // APP: parse authorization code
-    val code = OIDCUtils.getCodeFromRedirectUri(redirectToAPP)
-    code shouldNotBe null
+        // APP: init oidc session (par request)
+        val parHTTPResponse =
+            PushedAuthorizationRequest(oidcMeta.pushedAuthorizationRequestEndpointURI, authReq).toHTTPRequest().apply {
+                authorization = ClientSecretBasic(ClientID(CLIENT_ID), Secret(CLIENT_SECRET)).toHTTPAuthorizationHeader()
+            }.send()
 
-    // APP: get access token
-    val tokenHttpResponse = TokenRequest(metadata.tokenEndpointURI, ClientID(), AuthorizationCodeGrant(AuthorizationCode(code), APP_REDIRECT)).toHTTPRequest().apply {
-      authorization = ClientSecretBasic(ClientID(CLIENT_ID), Secret(CLIENT_SECRET)).toHTTPAuthorizationHeader()
-    }.send()
-    val tokenResponse = OIDCTokenResponse.parse(tokenHttpResponse)
+        parHTTPResponse.statusCode shouldBe HttpCode.CREATED.status
 
-    tokenResponse.indicatesSuccess() shouldBe true
-    tokenResponse.oidcTokens.idToken.jwtClaimsSet.subject shouldBe DID
+        val parResponse = PushedAuthorizationResponse.parse(parHTTPResponse)
 
-    // APP: get userInfo
-    val userInfoHttpResponse = UserInfoRequest(metadata.userInfoEndpointURI, tokenResponse.toSuccessResponse().tokens.accessToken).toHTTPRequest().send()
-    userInfoHttpResponse.indicatesSuccess() shouldBe true
+        // APP: redirect to authorization endpoint on IDP
+        val authHttpResponse = AuthorizationRequest.Builder(parResponse.toSuccessResponse().requestURI, ClientID(CLIENT_ID))
+            .endpointURI(oidcMeta.authorizationEndpointURI)
+            .build().toHTTPRequest().apply {
+                followRedirects = false
+            }.send()
 
-    val userInfoResponse = UserInfoResponse.parse(userInfoHttpResponse)
-    userInfoResponse.toSuccessResponse().userInfo.subject.value shouldBe DID
+        // IDP: redirects to WALLET
+        authHttpResponse.statusCode shouldBe HttpCode.FOUND.status
+        authHttpResponse.location.authority shouldBe URI.create(targetWallet.url).authority
+        authHttpResponse.location.path.trim('/') shouldBe targetWallet.presentPath.trim('/')
 
-    val verifiableId = VC.toCredential() as VerifiableId
-    userInfoResponse.toSuccessResponse().userInfo.name shouldBe "${verifiableId.credentialSubject!!.firstName} ${verifiableId.credentialSubject!!.familyName}"
-    userInfoResponse.toSuccessResponse().userInfo.givenName shouldBe verifiableId.credentialSubject!!.firstName
-    userInfoResponse.toSuccessResponse().userInfo.familyName shouldBe verifiableId.credentialSubject!!.familyName
-    userInfoResponse.toSuccessResponse().userInfo.birthdate shouldBe verifiableId.credentialSubject!!.dateOfBirth
-    userInfoResponse.toSuccessResponse().userInfo.gender.value shouldBe verifiableId.credentialSubject!!.gender
+        // WALLET: parse SIOP request
+        val siopReq = AuthorizationRequest.parse(authHttpResponse.location)
+        val presentationDef = shouldNotThrowAny { OIDC4VPService.getPresentationDefinition(siopReq) }
+        presentationDef.input_descriptors shouldNot beEmpty()
+        siopReq.customParameters shouldContainKey "nonce"
 
-  }
+        // WALLET: fulfill SIOP request on IDP
+        val presentation =
+            Custodian.getService().createPresentation(
+                listOf(VC),
+                DID,
+                challenge = siopReq.customParameters["nonce"]!!.first(),
+                expirationDate = null
+            )
+                .toCredential() as VerifiablePresentation
+        val siopResponse = OIDC4VPService.getSIOPResponseFor(siopReq, DID, listOf(presentation))
+
+        // IDP: redirects to APP with authorization code
+        return URI.create(OIDC4VPService.postSIOPResponse(siopReq, siopResponse))
+    }
+
+    @Test
+    fun testGetVpTokenCodeFlow() {
+        val targetWallet = VerifierConfig.config.wallets.values.first()
+        // APP: get oidc discovery document
+        val metadata = shouldNotThrowAny { OIDCProviderMetadata.resolve(Issuer(OIDC_URI)) }
+        // APP: init oidc session (par request)
+        val authReq = AuthorizationRequest.Builder(ResponseType.CODE, ClientID(CLIENT_ID))
+            .scope(Scope(OIDCScopeValue.OPENID))
+            .customParameter(
+                "claims", VCClaims(
+                    vp_token = VpTokenClaim(
+                        PresentationDefinition(
+                            "1",
+                            listOf(
+                                InputDescriptor(schema = VCSchema(uri = VcTemplateManager.loadTemplate("VerifiableId").credentialSchema!!.id))
+                            )
+                        )
+                    )
+                ).toJSONString()
+            )
+            .customParameter("walletId", targetWallet.id)
+            .state(State("TEST"))
+            .redirectionURI(APP_REDIRECT)
+            .build()
+
+        // IDP: redirects to APP with authorization code
+        val redirectToAPP = simulateAuthReqToAppRedirect(authReq, targetWallet, metadata)
+        redirectToAPP.query shouldContain "state=TEST"
+        redirectToAPP.query shouldContain "code="
+
+        // APP: parse authorization code
+        val code = OIDCUtils.getCodeFromRedirectUri(redirectToAPP)
+        code shouldNotBe null
+
+        // APP: get access token
+        val tokenHttpResponse = TokenRequest(
+            metadata.tokenEndpointURI,
+            ClientID(CLIENT_ID),
+            AuthorizationCodeGrant(AuthorizationCode(code), APP_REDIRECT)
+        ).toHTTPRequest().apply {
+            authorization = ClientSecretBasic(ClientID(CLIENT_ID), Secret(CLIENT_SECRET)).toHTTPAuthorizationHeader()
+        }.send()
+        val tokenResponse = OIDCTokenResponse.parse(tokenHttpResponse)
+
+        tokenResponse.indicatesSuccess() shouldBe true
+        tokenResponse.oidcTokens.idToken.jwtClaimsSet.claims shouldNotContainKey "vp_token"
+        tokenResponse.oidcTokens.idToken.jwtClaimsSet.subject shouldBe DID
+
+        // APP: get userInfo
+        val userInfoHttpResponse =
+            UserInfoRequest(metadata.userInfoEndpointURI, tokenResponse.toSuccessResponse().tokens.accessToken).toHTTPRequest()
+                .send()
+        userInfoHttpResponse.indicatesSuccess() shouldBe true
+
+        val userInfoResponse = UserInfoResponse.parse(userInfoHttpResponse)
+        userInfoResponse.toSuccessResponse().userInfo.subject.value shouldBe DID
+
+        val vpToken = userInfoResponse.toSuccessResponse().userInfo.getStringListClaim("vp_token")
+        vpToken shouldNotBe null
+    }
+
+    @Test
+    fun testGetVpTokenInIdToken() {
+        val targetWallet = VerifierConfig.config.wallets.values.first()
+        // APP: get oidc discovery document
+        val metadata = shouldNotThrowAny { OIDCProviderMetadata.resolve(Issuer(OIDC_URI)) }
+        // APP: init oidc session (par request)
+        val authReq = AuthorizationRequest.Builder(ResponseType.IDTOKEN, ClientID(CLIENT_ID))
+            .scope(Scope(OIDCScopeValue.OPENID))
+            .customParameter(
+                "claims", VCClaims(
+                    vp_token = VpTokenClaim(
+                        PresentationDefinition(
+                            "1",
+                            listOf(
+                                InputDescriptor(schema = VCSchema(uri = VcTemplateManager.loadTemplate("VerifiableId").credentialSchema!!.id))
+                            )
+                        )
+                    )
+                ).toJSONString()
+            )
+            .customParameter("walletId", targetWallet.id)
+            .state(State("TEST"))
+            .redirectionURI(APP_REDIRECT)
+            .build()
+
+        // IDP: redirects to APP with authorization code
+        val redirectToAPP = simulateAuthReqToAppRedirect(authReq, targetWallet, metadata)
+        redirectToAPP.fragment shouldNotBe null
+        redirectToAPP.fragment shouldContain "id_token="
+        val authResp = AuthenticationResponseParser.parse(redirectToAPP)
+        authResp.toSuccessResponse().idToken.jwtClaimsSet.subject shouldBe DID
+        authResp.toSuccessResponse().idToken.jwtClaimsSet.claims shouldContainKey "vp_token"
+    }
+
+
+    @Test
+    fun testGetProfileScopeCodeFlow() {
+        val targetWallet = VerifierConfig.config.wallets.values.first()
+        // APP: get oidc discovery document
+        val metadata = shouldNotThrowAny { OIDCProviderMetadata.resolve(Issuer(OIDC_URI)) }
+        // APP: init oidc session (par request)
+        val authReq = AuthorizationRequest.Builder(ResponseType.CODE, ClientID(CLIENT_ID))
+            .scope(Scope(OIDCScopeValue.OPENID, OIDCScopeValue.PROFILE))
+            .customParameter("walletId", targetWallet.id)
+            .state(State("TEST"))
+            .redirectionURI(APP_REDIRECT)
+            .build()
+
+        // IDP: redirects to APP with authorization code
+        val redirectToAPP = simulateAuthReqToAppRedirect(authReq, targetWallet, metadata)
+        redirectToAPP.query shouldContain "state=TEST"
+        redirectToAPP.query shouldContain "code="
+
+        // APP: parse authorization code
+        val code = OIDCUtils.getCodeFromRedirectUri(redirectToAPP)
+        code shouldNotBe null
+
+        // APP: get access token
+        val tokenHttpResponse = TokenRequest(
+            metadata.tokenEndpointURI,
+            ClientID(),
+            AuthorizationCodeGrant(AuthorizationCode(code), APP_REDIRECT)
+        ).toHTTPRequest().apply {
+            authorization = ClientSecretBasic(ClientID(CLIENT_ID), Secret(CLIENT_SECRET)).toHTTPAuthorizationHeader()
+        }.send()
+        val tokenResponse = OIDCTokenResponse.parse(tokenHttpResponse)
+
+        tokenResponse.indicatesSuccess() shouldBe true
+        tokenResponse.oidcTokens.idToken.jwtClaimsSet.subject shouldBe DID
+
+        // APP: get userInfo
+        val userInfoHttpResponse =
+            UserInfoRequest(metadata.userInfoEndpointURI, tokenResponse.toSuccessResponse().tokens.accessToken).toHTTPRequest()
+                .send()
+        userInfoHttpResponse.indicatesSuccess() shouldBe true
+
+        val userInfoResponse = UserInfoResponse.parse(userInfoHttpResponse)
+        userInfoResponse.toSuccessResponse().userInfo.subject.value shouldBe DID
+
+        val verifiableId = VC.toCredential() as VerifiableId
+        userInfoResponse.toSuccessResponse().userInfo.name shouldBe "${verifiableId.credentialSubject!!.firstName} ${verifiableId.credentialSubject!!.familyName}"
+        userInfoResponse.toSuccessResponse().userInfo.givenName shouldBe verifiableId.credentialSubject!!.firstName
+        userInfoResponse.toSuccessResponse().userInfo.familyName shouldBe verifiableId.credentialSubject!!.familyName
+        userInfoResponse.toSuccessResponse().userInfo.birthdate shouldBe verifiableId.credentialSubject!!.dateOfBirth
+        userInfoResponse.toSuccessResponse().userInfo.gender.value shouldBe verifiableId.credentialSubject!!.gender
+
+    }
 
 }

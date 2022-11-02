@@ -19,7 +19,6 @@ object IDPRestAPI {
         RestAPI.apiTitle = "walt.id IDP Kit"
         _javalin = RestAPI.start(bindAddress, port, IDPAccessManager) {
 
-
             path("verifier-api", VerifierController::routes)
 
             path("api") {
