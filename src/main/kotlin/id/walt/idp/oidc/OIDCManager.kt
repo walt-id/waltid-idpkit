@@ -285,7 +285,7 @@ object OIDCManager : IDPManager {
                 val presReq = PresentationRequestInfo(siopReq.state.value, siopReq.toURI().toString())
                 requestCache.put(siopReq.state.value, presReq)
 
-                return URI.create("http://localhost:3000/sharecredential/${siopReq.state.value}")
+                return URI.create("${VerifierConfig.config.verifierUiUrl}/sharecredential/${siopReq.state.value}")
 
                 //return siopReq.toURI().also { log.debug { "request redirect url is: $it" } }
 
