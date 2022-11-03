@@ -32,6 +32,7 @@ import id.walt.verifier.backend.VerifierConfig
 import id.walt.verifier.backend.WalletConfiguration
 import io.javalin.http.HttpCode
 import io.kotest.assertions.throwables.shouldNotThrowAny
+import io.kotest.core.annotation.Ignored
 import io.kotest.matchers.collections.beEmpty
 import io.kotest.matchers.collections.shouldContain
 import io.kotest.matchers.collections.shouldContainAll
@@ -121,7 +122,7 @@ class OIDCTest : OIDCTestBase() {
         return URI.create(OIDC4VPService.postSIOPResponse(siopReq, siopResponse))
     }
 
-    @Test
+    //@Test
     fun testGetVpTokenCodeFlow() {
         val targetWallet = VerifierConfig.config.wallets.values.first()
         // APP: get oidc discovery document
@@ -182,7 +183,7 @@ class OIDCTest : OIDCTestBase() {
         vpToken shouldNotBe null
     }
 
-    @Test
+    //@Test
     fun testGetVpTokenInIdToken() {
         val targetWallet = VerifierConfig.config.wallets.values.first()
         // APP: get oidc discovery document
@@ -217,7 +218,7 @@ class OIDCTest : OIDCTestBase() {
     }
 
 
-    @Test
+    //@Test
     fun testGetProfileScopeCodeFlow() {
         val targetWallet = VerifierConfig.config.wallets.values.first()
         // APP: get oidc discovery document
