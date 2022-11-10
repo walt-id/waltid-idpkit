@@ -34,7 +34,7 @@ val buildTask = tasks.register<YarnTask>("buildYarn") {
     dependsOn(tasks.npmInstall)
     yarnCommand.set(listOf("generate"))
 
-    if (environment.get()["NODE_OPTIONS"] == null) {
+    if (environment.get()["NODE_OPTIONS"] == null && System.getenv()["SKIP_LEGACY_OPENSSL_PROVIDER"] == "true") {
         environment.set(mapOf("NODE_OPTIONS" to "--openssl-legacy-provider"))
     } else {
         println("Current node options: " + environment.get()["NODE_OPTIONS"])
