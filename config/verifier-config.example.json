@@ -1,5 +1,5 @@
 {
-    "verifierUiUrl": "http://localhost:8080",
+    "verifierUiUrl": "http://localhost:8080/sharecredential/",
     "verifierApiUrl": "http://localhost:8080/api/siop",
     "additionalPolicies": [
         {
