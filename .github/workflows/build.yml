@@ -1,4 +1,4 @@
-name: CI/CD Workflow for walt.id SSI Kit
+name: CI/CD Workflow for walt.id IDP Kit
 
 on:
   push:
