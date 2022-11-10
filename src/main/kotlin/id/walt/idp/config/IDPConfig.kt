@@ -15,7 +15,7 @@ data class IDPConfig(
 ) {
     companion object {
         val CONFIG_FILE = "${id.walt.WALTID_DATA_ROOT}/config/idp-config.json"
-        lateinit var config: IDPConfig
+        var config: IDPConfig
 
         init {
             val cf = File(CONFIG_FILE)

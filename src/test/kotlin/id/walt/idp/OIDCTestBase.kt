@@ -18,7 +18,7 @@ import io.mockk.every
 import io.mockk.mockkObject
 import java.net.URI
 
-open abstract class OIDCTestBase : AnnotationSpec() {
+abstract class OIDCTestBase : AnnotationSpec() {
     val OIDC_URI: URI = URI.create("http://localhost:8080/api/oidc")
     val contexts: MutableMap<String, Context> = mutableMapOf()
 

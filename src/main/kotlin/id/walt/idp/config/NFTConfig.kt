@@ -16,7 +16,7 @@ data class NFTConfig(
 ) {
     companion object {
         val CONFIG_FILE = "${id.walt.WALTID_DATA_ROOT}/config/nft-config.json"
-        lateinit var config: NFTConfig
+        var config: NFTConfig
 
         init {
             val cf = File(CONFIG_FILE)
