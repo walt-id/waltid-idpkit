@@ -55,7 +55,7 @@ dependencies {
     implementation("com.jayway.jsonpath:json-path:2.7.0")
 
     // Web UI
-    implementation(project(":web:waltid-idpkit-ui"))
+    //implementation(project(":web:waltid-idpkit-ui"))
 
     // Testing
     //testImplementation(kotlin("test-junit"))
@@ -104,6 +104,7 @@ publishing {
     repositories {
         maven {
             url = uri("https://maven.walt.id/repository/waltid-ssi-kit/")
+
             val usernameFile = File("secret_maven_username.txt")
             val passwordFile = File("secret_maven_password.txt")
             val secretMavenUsername = System.getenv()["MAVEN_USERNAME"] ?: if (usernameFile.isFile) { usernameFile.readLines()[0] } else { "" }
@@ -111,7 +112,7 @@ publishing {
             val secretMavenPassword = System.getenv()["MAVEN_PASSWORD"] ?: if (passwordFile.isFile) { passwordFile.readLines()[0] } else { "" }
 
             if (secretMavenPassword.isBlank()) {
-                println("WARNING: Password is blank!")
+                println("Password is blank.")
             }
 
             credentials {
