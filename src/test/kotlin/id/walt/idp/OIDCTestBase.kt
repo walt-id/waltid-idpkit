@@ -18,38 +18,44 @@ import io.mockk.every
 import io.mockk.mockkObject
 import java.net.URI
 
-open abstract class OIDCTestBase: AnnotationSpec() {
-  val OIDC_URI: URI = URI.create("http://localhost:8080/api/oidc")
-  val contexts: MutableMap<String, Context> = mutableMapOf()
+open abstract class OIDCTestBase : AnnotationSpec() {
+    val OIDC_URI: URI = URI.create("http://localhost:8080/api/oidc")
+    val contexts: MutableMap<String, Context> = mutableMapOf()
 
-  @BeforeClass
-  fun init() {
-    ServiceMatrix("src/test/resources/service-matrix.properties")
-    ServiceRegistry.registerService<ContextManager>(WalletContextManager)
+    @BeforeClass
+    fun init() {
+        ServiceMatrix("src/test/resources/service-matrix.properties")
+        ServiceRegistry.registerService<ContextManager>(WalletContextManager)
 
-    mockkObject(ContextFactory)
-    every { ContextFactory.getContextFor(any()) } answers { c -> contexts[c.invocation.args.first().toString()] ?: UserContext(
-      contextId = c.invocation.args.first().toString(),
-      hkvStore = InMemoryHKVStore(),
-      keyStore = HKVKeyStoreService(),
-      vcStore = HKVVcStoreService()
-    ).also { contexts[c.invocation.args.first().toString()] = it }}
+        mockkObject(ContextFactory)
+        every { ContextFactory.getContextFor(any()) } answers { c ->
+            contexts[c.invocation.args.first().toString()] ?: UserContext(
+                contextId = c.invocation.args.first().toString(),
+                hkvStore = InMemoryHKVStore(),
+                keyStore = HKVKeyStoreService(),
+                vcStore = HKVVcStoreService()
+            ).also { contexts[c.invocation.args.first().toString()] = it }
+        }
 
-    mockkObject(IDPConfig)
-    every { IDPConfig.config } returns IDPConfig(externalUrl = "http://localhost:8080", "", claimConfig = TEST_CLAIM_MAPPINGS)
+        mockkObject(IDPConfig)
+        every { IDPConfig.config } returns IDPConfig(
+            externalUrl = "http://localhost:8080",
+            "",
+            claimConfig = TEST_CLAIM_MAPPINGS
+        )
 
-    mockkObject(VerifierConfig)
-    every { VerifierConfig.config } returns VerifierConfig("http://localhost:8080", "http://localhost:8080/api/siop")
+        mockkObject(VerifierConfig)
+        every { VerifierConfig.config } returns VerifierConfig("http://localhost:8080", "http://localhost:8080/api/siop")
 
-    customInit()
+        customInit()
 
-    IDPRestAPI.start()
-  }
+        IDPRestAPI.start()
+    }
 
-  @AfterClass
-  fun deinit() {
-    IDPRestAPI.stop()
-  }
+    @AfterClass
+    fun deinit() {
+        IDPRestAPI.stop()
+    }
 
-  abstract fun customInit()
+    abstract fun customInit()
 }

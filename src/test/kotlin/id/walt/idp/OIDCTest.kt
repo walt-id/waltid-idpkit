@@ -32,7 +32,6 @@ import id.walt.verifier.backend.VerifierConfig
 import id.walt.verifier.backend.WalletConfiguration
 import io.javalin.http.HttpCode
 import io.kotest.assertions.throwables.shouldNotThrowAny
-import io.kotest.core.annotation.Ignored
 import io.kotest.matchers.collections.beEmpty
 import io.kotest.matchers.collections.shouldContain
 import io.kotest.matchers.collections.shouldContainAll
@@ -57,11 +56,13 @@ class OIDCTest : OIDCTestBase() {
 
     override fun customInit() {
         mockkObject(OIDCClientRegistry)
-        every { OIDCClientRegistry.load(CLIENT_ID) } returns Optional.of(ClientInformation(ClientID(CLIENT_ID), Date(),
-            ClientMetadata().apply {
-                redirectionURI = APP_REDIRECT
-            }, Secret(CLIENT_SECRET)
-        )
+        every { OIDCClientRegistry.load(CLIENT_ID) } returns Optional.of(
+            ClientInformation(
+                ClientID(CLIENT_ID), Date(),
+                ClientMetadata().apply {
+                    redirectionURI = APP_REDIRECT
+                }, Secret(CLIENT_SECRET)
+            )
         )
 
         DID = DidService.create(DidMethod.key)

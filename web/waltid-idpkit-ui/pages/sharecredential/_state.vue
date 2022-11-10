@@ -6,19 +6,24 @@
             </div>
 
             <div class="text-center">
-                <a class="btn btn-success" v-on:click="redirectToWebWallet">Click to login with Web Wallet</a>
+                <a v-if="requestInfo && requestInfo.requestId" class="btn btn-success" v-on:click="redirectToWebWallet">Click
+                    to login with Web Wallet</a> <a v-else class="btn btn-danger" v-on:click="redirectBack">Return to
+                previous page</a>
             </div>
 
             <hr>
 
             <div>
-                <div class="text-center">
+                <div v-if="requestInfo && requestInfo.requestId" class="text-center">
                     <h2>Or scan this code with your mobile identity wallet:</h2>
+                </div>
+                <div v-else>
+                    <h2>Invalid request (Timed out or doesn't exist).</h2>
                 </div>
                 <div class="text-center">
                     <canvas :id="'qr-code'"/>
                 </div>
-                <div class="text-center small">
+                <div v-if="requestInfo && requestInfo.requestId && requestInfo.url" class="text-center small">
                     Request ID: {{ requestInfo.requestId }}
                     <pre><code>{{ requestInfo.url }}</code></pre>
                 </div>
@@ -34,30 +39,42 @@ import QRious from "qrious"
 export default {
     name: 'ShareCredential',
     async asyncData({$axios, route}) {
-        const requestInfo = await $axios.$get('/api/openIdRequestUri?state=' + route.params.state)
+        if (route.query.state || route.params.state) {
+            let state = route.query.state ? route.query.state : route.params.state
+            console.log("Using state: " + state)
 
-        let reqTimer = setInterval(async () => {
-            let response = await fetch("/verifier-api/verify/isVerified?state=" + requestInfo.requestId);
+            const requestInfo = await $axios.$get('/api/openIdRequestUri?state=' + state)
 
-            if (response.status === 200) {
-                window.clearTimeout(reqTimer);
+            if (requestInfo) {
+                let reqTimer = setInterval(async () => {
+                    let response = await fetch("/verifier-api/verify/isVerified?state=" + requestInfo.requestId);
 
-                window.location = await response.text();
-            }
-        }, 1000)
+                    if (response.status === 200) {
+                        window.clearTimeout(reqTimer);
 
-        console.log(requestInfo)
-        return {requestInfo}
+                        window.location = await response.text();
+                    }
+                }, 1000)
+
+                console.log(requestInfo)
+                return {requestInfo}
+            } else return null
+        } else {
+            console.log("No state in params!")
+            return null
+        }
     },
     mounted() {
-        new QRious({
-            element: document.getElementById('qr-code'),
-            value: this.requestInfo.url,
-            size: 300
-        })
+        if (this.requestInfo && this.requestInfo.url) {
+            new QRious({
+                element: document.getElementById('qr-code'),
+                value: this.requestInfo.url,
+                size: 300
+            })
+        }
     },
     methods: {
-        redirectToWebWallet: function() {
+        redirectToWebWallet: function () {
 
             let reqUrl = this.requestInfo.url
             let reqParams = reqUrl.substring(reqUrl.indexOf('?'), reqUrl.length - 1)
@@ -65,10 +82,12 @@ export default {
             console.log("Full url: " + fullUrl)
 
             window.location = fullUrl
+        },
+        redirectBack: function () {
+            window.history.back()
         }
     }
 }
 </script>
 
-<style>
-</style>
+<style></style>
