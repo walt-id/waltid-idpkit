@@ -34,7 +34,11 @@ val buildTask = tasks.register<YarnTask>("buildYarn") {
     dependsOn(tasks.npmInstall)
     yarnCommand.set(listOf("generate"))
 
-    environment.set(mapOf("NODE_OPTIONS" to "--openssl-legacy-provider"))
+    if (environment.get()["NODE_OPTIONS"] == null) {
+        environment.set(mapOf("NODE_OPTIONS" to "--openssl-legacy-provider"))
+    } else {
+        println("Current node options: " + environment.get()["NODE_OPTIONS"])
+    }
 
     inputs.dir("components")
     inputs.dir("pages")
