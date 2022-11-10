@@ -54,6 +54,9 @@ dependencies {
     //JSON
     implementation("com.jayway.jsonpath:json-path:2.7.0")
 
+    // Web UI
+    implementation(project(":web:waltid-idpkit-ui"))
+
     // Testing
     //testImplementation(kotlin("test-junit"))
     testImplementation("io.mockk:mockk:1.13.2")
