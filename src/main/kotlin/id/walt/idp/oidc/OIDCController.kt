@@ -204,7 +204,7 @@ object OIDCController {
     }
 
     private fun tokenRequest(ctx: Context) {
-        val tokenReq = kotlin.runCatching { TokenRequest.parse(ServletUtils.createHTTPRequest(ctx.req)) }
+        val tokenReq = runCatching { TokenRequest.parse(ServletUtils.createHTTPRequest(ctx.req)) }
             .getOrElse { it.printStackTrace()
                 throw BadRequestResponse(it.message ?: "Failed to parse token request") }
         if (tokenReq.authorizationGrant.type != GrantType.AUTHORIZATION_CODE) throw BadRequestResponse("Unsupported authorization grant type")
