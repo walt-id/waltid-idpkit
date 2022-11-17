@@ -9,6 +9,7 @@ import id.walt.webwallet.backend.rest.RestAPI
 import io.javalin.Javalin
 import io.javalin.apibuilder.ApiBuilder.get
 import io.javalin.apibuilder.ApiBuilder.path
+import io.javalin.http.staticfiles.Location
 import mu.KotlinLogging
 
 object IDPRestAPI {
@@ -29,6 +30,12 @@ object IDPRestAPI {
                 path("siwe", SIWEController::routes)
             }
         }.apply {
+            _conf.addStaticFiles {
+                it.location = Location.CLASSPATH
+                it.directory = "/app"
+                it.hostedPath = "/"
+            }
+            _conf.addSinglePageRoot("/", "/app/index.html")
             exception(IllegalStateException::class.java) { e, ctx ->
                 log.error { "ILLEGAL STATE EXCEPTION DURING HANDLING:" }
                 e.printStackTrace()

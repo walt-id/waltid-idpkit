@@ -35,7 +35,7 @@ dependencies {
     // SSIKIT
     implementation("id.walt:waltid-ssi-kit:1.13.0-SNAPSHOT2")
     implementation("id.walt:waltid-ssikit-vclib:1.23.5")
-    implementation("id.walt:waltid-walletkit:1.0-SNAPSHOT")
+    implementation("id.walt:waltid-walletkit:1.1-SNAPSHOT")
 
     // Service-Matrix
     implementation("id.walt.servicematrix:WaltID-ServiceMatrix:1.1.0")
@@ -64,6 +64,9 @@ dependencies {
 
     // NftKit
     implementation("id.walt:waltid-nftkit:1.0.0")
+
+    // Web UI
+    implementation(project(":web:waltid-idpkit-ui"))
 }
 
 tasks.withType<KotlinCompile> {
@@ -74,7 +77,7 @@ tasks.withType<KotlinCompile> {
 
 java {
     toolchain {
-        languageVersion.set(JavaLanguageVersion.of(18))
+        languageVersion.set(JavaLanguageVersion.of(17))
     }
 }
 
