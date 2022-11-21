@@ -1,4 +1,7 @@
 build
 .*
 secret*
-web
+web/waltid-idpkit-ui/build
+web/waltid-idpkit-ui/.*
+web/waltid-idpkit-ui/dist
+web/waltid-idpkit-ui/node_modules

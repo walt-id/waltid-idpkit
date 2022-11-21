@@ -31,7 +31,7 @@ val buildTask = tasks.findByName("yarn_generate")!!.apply {
 }*/
 
 val buildTask = tasks.register<YarnTask>("buildYarn") {
-    dependsOn(tasks.npmInstall)
+    dependsOn("yarn_install")
     yarnCommand.set(listOf("generate"))
 
     if (environment.get()["NODE_OPTIONS"] == null && System.getenv()["SKIP_LEGACY_OPENSSL_PROVIDER"] != "true") {

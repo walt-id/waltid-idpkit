@@ -6,7 +6,7 @@ ARG SKIP_TESTS
 # --- build-env
 FROM docker.io/gradle:7.5-jdk as build-env
 
-ARG SKIP_TESTS
+RUN apt-get update && apt-get install -y git nodejs npm && npm install -g yarn
 
 WORKDIR /appbuild
 
