@@ -2,7 +2,7 @@ package id.walt.idp.nfts
 
 import com.beust.klaxon.Json
 import com.nimbusds.openid.connect.sdk.OIDCClaimsRequest
-import id.walt.model.oidc.klaxon
+import id.walt.common.klaxonWithConverters
 import id.walt.nftkit.services.Chain
 import net.minidev.json.JSONObject
 import net.minidev.json.parser.JSONParser
@@ -20,7 +20,7 @@ class NFTClaims(
     override fun toJSONObject(): JSONObject {
         val o = super.toJSONObject()
         if (nft_token != null) {
-            o.put("nft_token", JSONParser(JSONParser.MODE_PERMISSIVE).parse(klaxon.toJsonString(nft_token)))
+            o.put("nft_token", JSONParser(JSONParser.MODE_PERMISSIVE).parse(klaxonWithConverters.toJsonString(nft_token)))
         }
         return o
     }
