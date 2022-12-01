@@ -20,6 +20,7 @@ import com.nimbusds.openid.connect.sdk.*
 import com.nimbusds.openid.connect.sdk.claims.UserInfo
 import com.nimbusds.openid.connect.sdk.op.OIDCProviderMetadata
 import com.nimbusds.openid.connect.sdk.token.OIDCTokens
+import id.walt.common.klaxonWithConverters
 import id.walt.crypto.KeyAlgorithm
 import id.walt.crypto.KeyId
 import id.walt.idp.IDPManager
@@ -35,7 +36,6 @@ import id.walt.idp.siop.SIOPState
 import id.walt.idp.siwe.SiweManager
 import id.walt.idp.util.WaltIdAlgorithm
 import id.walt.model.dif.*
-import id.walt.model.oidc.klaxon
 import id.walt.nftkit.services.Chain
 import id.walt.services.key.KeyFormat
 import id.walt.services.key.KeyService
@@ -264,7 +264,7 @@ object OIDCManager : IDPManager {
         val state = ctx.queryParam("state") ?: throw IllegalStateException("No state supplied")
         val request = requestCache.getIfPresent(state) ?: throw IllegalStateException("State not known")
 
-        val reqJson = klaxon.toJsonString(request)
+        val reqJson = klaxonWithConverters.toJsonString(request)
 
         ctx.result(reqJson).contentType("application/json")
         // ctx.json(...)

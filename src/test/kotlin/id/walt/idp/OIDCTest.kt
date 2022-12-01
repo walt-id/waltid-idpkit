@@ -10,6 +10,9 @@ import com.nimbusds.oauth2.sdk.id.Issuer
 import com.nimbusds.oauth2.sdk.id.State
 import com.nimbusds.openid.connect.sdk.*
 import com.nimbusds.openid.connect.sdk.op.OIDCProviderMetadata
+import id.walt.credentials.w3c.templates.VcTemplateManager
+import id.walt.credentials.w3c.toVerifiableCredential
+import id.walt.credentials.w3c.toVerifiablePresentation
 import id.walt.custodian.Custodian
 import id.walt.idp.oidc.OIDCClientRegistry
 import id.walt.model.DidMethod
@@ -24,10 +27,6 @@ import id.walt.services.oidc.OIDCUtils
 import id.walt.signatory.ProofConfig
 import id.walt.signatory.ProofType
 import id.walt.signatory.Signatory
-import id.walt.vclib.credentials.VerifiableId
-import id.walt.vclib.credentials.VerifiablePresentation
-import id.walt.vclib.model.toCredential
-import id.walt.vclib.templates.VcTemplateManager
 import id.walt.verifier.backend.VerifierConfig
 import id.walt.verifier.backend.WalletConfiguration
 import io.javalin.http.HttpCode
@@ -116,7 +115,7 @@ class OIDCTest : OIDCTestBase() {
                 challenge = siopReq.customParameters["nonce"]!!.first(),
                 expirationDate = null
             )
-                .toCredential() as VerifiablePresentation
+                .toVerifiablePresentation()
         val siopResponse = OIDC4VPService.getSIOPResponseFor(siopReq, DID, listOf(presentation))
 
         // IDP: redirects to APP with authorization code
@@ -137,7 +136,7 @@ class OIDCTest : OIDCTestBase() {
                         PresentationDefinition(
                             "1",
                             listOf(
-                                InputDescriptor(schema = VCSchema(uri = VcTemplateManager.loadTemplate("VerifiableId").credentialSchema!!.id))
+                                InputDescriptor(schema = VCSchema(uri = VcTemplateManager.getTemplate("VerifiableId", true).template!!.credentialSchema!!.id))
                             )
                         )
                     )
@@ -198,7 +197,7 @@ class OIDCTest : OIDCTestBase() {
                         PresentationDefinition(
                             "1",
                             listOf(
-                                InputDescriptor(schema = VCSchema(uri = VcTemplateManager.loadTemplate("VerifiableId").credentialSchema!!.id))
+                                InputDescriptor(schema = VCSchema(uri = VcTemplateManager.getTemplate("VerifiableId", true).template!!.credentialSchema!!.id))
                             )
                         )
                     )
@@ -263,12 +262,12 @@ class OIDCTest : OIDCTestBase() {
         val userInfoResponse = UserInfoResponse.parse(userInfoHttpResponse)
         userInfoResponse.toSuccessResponse().userInfo.subject.value shouldBe DID
 
-        val verifiableId = VC.toCredential() as VerifiableId
-        userInfoResponse.toSuccessResponse().userInfo.name shouldBe "${verifiableId.credentialSubject!!.firstName} ${verifiableId.credentialSubject!!.familyName}"
-        userInfoResponse.toSuccessResponse().userInfo.givenName shouldBe verifiableId.credentialSubject!!.firstName
-        userInfoResponse.toSuccessResponse().userInfo.familyName shouldBe verifiableId.credentialSubject!!.familyName
-        userInfoResponse.toSuccessResponse().userInfo.birthdate shouldBe verifiableId.credentialSubject!!.dateOfBirth
-        userInfoResponse.toSuccessResponse().userInfo.gender.value shouldBe verifiableId.credentialSubject!!.gender
+        val verifiableId = VC.toVerifiableCredential()
+        userInfoResponse.toSuccessResponse().userInfo.name shouldBe "${verifiableId.credentialSubject!!.properties["firstName"]} ${verifiableId.credentialSubject!!.properties["familyName"]}"
+        userInfoResponse.toSuccessResponse().userInfo.givenName shouldBe verifiableId.credentialSubject!!.properties["firstName"]
+        userInfoResponse.toSuccessResponse().userInfo.familyName shouldBe verifiableId.credentialSubject!!.properties["familyName"]
+        userInfoResponse.toSuccessResponse().userInfo.birthdate shouldBe verifiableId.credentialSubject!!.properties["dateOfBirth"]
+        userInfoResponse.toSuccessResponse().userInfo.gender.value shouldBe verifiableId.credentialSubject!!.properties["gender"]
 
     }
 

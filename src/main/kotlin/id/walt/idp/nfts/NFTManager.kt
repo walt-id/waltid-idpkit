@@ -3,13 +3,13 @@ package id.walt.idp.nfts
 import com.nimbusds.jose.shaded.json.JSONObject
 import com.nimbusds.jose.shaded.json.parser.JSONParser
 import com.nimbusds.oauth2.sdk.AuthorizationRequest
+import id.walt.common.klaxonWithConverters
 import id.walt.idp.config.IDPConfig
 import id.walt.idp.oidc.OIDCManager
 import id.walt.idp.oidc.ResponseVerificationResult
 import id.walt.nftkit.opa.DynamicPolicy
 import id.walt.nftkit.services.NftMetadata
 import id.walt.nftkit.services.NftService
-import id.walt.vclib.model.VerifiableCredential.Companion.klaxon
 import java.math.BigInteger
 import java.net.URI
 
@@ -41,7 +41,7 @@ object NFTManager {
                         else -> null
                     }
                 }
-                ?.let { klaxon.parse<NFTClaims>(it) } ?: NFTClaims()
+                ?.let { klaxonWithConverters.parse<NFTClaims>(it) } ?: NFTClaims()
         return claims
     }
 
