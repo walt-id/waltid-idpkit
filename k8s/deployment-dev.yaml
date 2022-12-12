@@ -5,7 +5,7 @@ metadata:
 data:
   verifier-config.json: |
     {
-      "verifierUiUrl": "https://idp.walt-test.cloud",
+      "verifierUiUrl": "https://idp.walt-test.cloud/sharecredential?state=",
       "verifierApiUrl": "https://idp.walt-test.cloud/api/siop",
       "additionalPolicies": [
         {
