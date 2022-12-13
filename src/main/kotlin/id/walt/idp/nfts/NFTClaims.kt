@@ -12,6 +12,8 @@ data class NftTokenClaim(
     val chain: Chain?,
     @Json(serializeNull = false)
     val smartContractAddress: String?,
+    @Json(serializeNull = false)
+    val factorySmartContractAddress: String?,
 )
 
 class NFTClaims(

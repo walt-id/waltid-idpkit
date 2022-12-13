@@ -10,6 +10,7 @@ import id.walt.idp.oidc.ResponseVerificationResult
 import id.walt.nftkit.opa.DynamicPolicy
 import id.walt.nftkit.services.NftMetadata
 import id.walt.nftkit.services.NftService
+import id.walt.nftkit.services.VerificationService
 import java.math.BigInteger
 import java.net.URI
 
@@ -67,11 +68,19 @@ object NFTManager {
 
     private fun nftCollectionOwnershipVerification(sessionId: String, account: String): Boolean {
         val session = OIDCManager.getOIDCSession(sessionId)
-        val balance = NftService.balanceOf(
-            session?.nftTokenClaim?.chain!!,
-            session.nftTokenClaim.smartContractAddress!!, account.trim()
-        )
-        return balance!!.compareTo(BigInteger("0")) == 1
+        println("smart contract factory address: ${session?.nftTokenClaim?.factorySmartContractAddress}")
+        println("smart contract address: ${session?.nftTokenClaim?.smartContractAddress}")
+        if(session?.nftTokenClaim?.factorySmartContractAddress.equals("") || session?.nftTokenClaim?.factorySmartContractAddress == null ) {
+            val balance = NftService.balanceOf(
+                session?.nftTokenClaim?.chain!!,
+                session.nftTokenClaim.smartContractAddress!!, account.trim()
+            )
+            return balance!!.compareTo(BigInteger("0")) == 1
+        }else{
+            println("data nft verification")
+            return VerificationService.dataNftVerification(session?.nftTokenClaim?.chain!!, session?.nftTokenClaim?.factorySmartContractAddress!!,
+                    session?.nftTokenClaim?.smartContractAddress!!, account.trim(), "", null)
+        }
     }
 
     private fun getAccountNftMetadata(sessionId: String, account: String): NftMetadata {

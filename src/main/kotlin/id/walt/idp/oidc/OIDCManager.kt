@@ -191,7 +191,7 @@ object OIDCManager : IDPManager {
                 IDPConfig.config.claimConfig?.mappingsForScope(s)?.filterIsInstance<NFTClaimMapping>()
                     ?: listOf()
             }
-                .map { m -> NftTokenClaim(Chain.valueOf(m.chain), m.smartContractAddress) }
+                .map { m -> NftTokenClaim(Chain.valueOf(m.chain), m.smartContractAddress, m.factorySmartContractAddress) }
                 .distinctBy { c -> "${c.chain}@${c.smartContractAddress}" }
             if (nftClaimFromMappings.size > 1) {
                 throw BadRequestResponse("Ambiguous NFT authorization request")

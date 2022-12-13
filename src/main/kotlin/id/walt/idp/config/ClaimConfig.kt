@@ -41,6 +41,7 @@ class NFTClaimMapping(
     claim: String,
     val chain: String,
     val smartContractAddress: String,
+    val factorySmartContractAddress: String,
     val trait: String
 ) : ClaimMapping(scope, claim) {
     override fun fillClaims(verificationResult: ResponseVerificationResult, claimBuilder: JWTClaimsSet.Builder) {
