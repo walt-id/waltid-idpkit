@@ -57,12 +57,14 @@
         "claim": "awd",
         "chain": "POLYGON",
         "smartContractAddress": "0x9bc4d80c7b77ecc7107eac3961cb1dd98930f2b2",
+          "factorySmartContractAddress": "",
         "trait": "award"
       }
     ],
     "default_nft_token_claim": {
-      "chain": "POLYGON",
-      "smartContractAddress": "0x21dd9b1913d84ab295fdf19834b0b6824a5912ca"
+        "chain": "MUMBAI",
+        "factorySmartContractAddress": "0x7d46d74023507d30ccc2d3868129fbe4e400e40b",
+        "smartContractAddress": "0x76caad37dcfaa96fbbc83c374b6686a2a1c8ac86"
     },
     "default_vp_token_claim": {
       "presentation_definition": {
