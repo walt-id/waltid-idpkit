@@ -9,7 +9,10 @@
     "generate": "nuxt generate"
   },
   "dependencies": {
+    "@airgap/beacon-sdk": "^3.3.0",
     "@nuxtjs/axios": "^5.13.6",
+    "@taquito/beacon-wallet": "^15.0.0",
+    "@taquito/taquito": "^15.0.0",
     "@walletconnect/encoding": "^1.0.1",
     "@walletconnect/web3-provider": "^1.8.0",
     "bootstrap": "^4.6.2",
@@ -19,9 +22,9 @@
     "ethers": "^5.7.2",
     "nuxt": "^2.15.8",
     "qrious": "^4.0.2",
-    "vue": "2.7.14",
-    "vue-server-renderer": "2.7.14",
-    "vue-template-compiler": "2.7.14",
+    "vue": "2.7.8",
+    "vue-server-renderer": "2.7.8",
+    "vue-template-compiler": "2.7.8",
     "web3modal": "^1.9.9",
     "webpack": "^4.46.0"
   },
