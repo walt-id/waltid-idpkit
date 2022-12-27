@@ -93,7 +93,15 @@ object NFTController {
             }else{
                 val result = NFTManager.verifyTezosNftOwnership(sessionId, address)
                 if(result.isValid && IDPConfig.config.claimConfig?.default_nft_policy!!.withPolicyVerification!!){
-
+                    val policyVerification = NFTManager.verifyNftMetadataAgainstPolicy(result.metadata!!)
+                    if (policyVerification) {
+                        val responseVerificationResult = ResponseVerificationResult(siopResponseVerificationResult = null, result)
+                        val uri = OIDCManager.continueIDPSessionResponse(sessionId, responseVerificationResult)
+                        ctx.status(HttpCode.FOUND).header("Location", uri.toString())
+                    } else {
+                        val uri = NFTManager.generateErrorResponseObject(sessionId, "", "Invalid policy verification.")
+                        ctx.status(HttpCode.FOUND).header("Location", uri.toString())
+                    }
                 }else{
                     val responseVerificationResult = ResponseVerificationResult(siopResponseVerificationResult = null, result)
                     val uri = OIDCManager.continueIDPSessionResponse(sessionId, responseVerificationResult)

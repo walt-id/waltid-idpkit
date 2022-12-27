@@ -32,10 +32,10 @@ object NFTManager {
     fun verifyNftOwnershipResponse(sessionId: String, account: String): NftResponseVerificationResult {
         val result = nftCollectionOwnershipVerification(sessionId, account)
         val error = if (result) null else "Invalid Ownership"
-        var nft: NftMetadata? = null
+        var nft: NftMetadataWrapper? = null
 
         if (result) {
-            nft = getAccountNftMetadata(sessionId, account)
+            nft = NftMetadataWrapper(getAccountNftMetadata(sessionId, account), null)
         }
         val nftResponseVerificationResult = NftResponseVerificationResult(account, sessionId, result, nft, error = error)
         return nftResponseVerificationResult
@@ -44,10 +44,10 @@ object NFTManager {
     fun verifyTezosNftOwnership(sessionId: String, account: String): NftResponseVerificationResult {
         val result= tezosNftCollectionOwnershipVerification(sessionId, account)
         val error = if (result) null else "Invalid Ownership"
-        var nft: NftMetadata? = null
+        var nft: NftMetadataWrapper? = null
 
         if (result) {
-            //nft = getAccountNftMetadata(sessionId, account)
+            nft = NftMetadataWrapper(null, getAccountTezosNftMetadata(sessionId, account))
         }
         val nftResponseVerificationResult = NftResponseVerificationResult(account, sessionId, result, nft, error = error)
         return nftResponseVerificationResult
@@ -79,7 +79,7 @@ object NFTManager {
         return uri
     }
 
-    fun verifyNftMetadataAgainstPolicy(nftMetadata: NftMetadata): Boolean {
+    fun verifyNftMetadataAgainstPolicy(nftMetadata: NftMetadataWrapper): Boolean {
         return DynamicPolicy.doVerify(
             IDPConfig.config.claimConfig?.default_nft_policy!!.inputs,
             IDPConfig.config.claimConfig?.default_nft_policy!!.policy,
@@ -117,6 +117,13 @@ object NFTManager {
             .filter { it.contract.address.equals(session.nftTokenClaim.smartContractAddress, ignoreCase = true) }
             .sortedBy { it.id.tokenId }
         return nfts.get(0).metadata!!
+    }
+
+    private fun getAccountTezosNftMetadata(sessionId: String, account: String): TezosNftMetadata? {
+        val session = OIDCManager.getOIDCSession(sessionId)
+        val nfts= TezosNftService.fetchAccountNFTsByTzkt(session?.nftTokenClaim?.chain!!, account, session.nftTokenClaim.smartContractAddress)
+            .sortedBy { it.id }
+        return nfts.get(0).token.metadata
     }
 
 }
