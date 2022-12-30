@@ -66,6 +66,14 @@ dependencies {
 
     // Web UI
     implementation(project(":web:waltid-idpkit-ui"))
+
+    // HTTP / Client: ktor
+    implementation("io.ktor:ktor-client-core:2.0.0")
+    implementation("io.ktor:ktor-client-content-negotiation:2.0.0")
+    implementation("io.ktor:ktor-serialization-kotlinx-json:2.0.0")
+    implementation("io.ktor:ktor-client-cio:2.0.0")
+    implementation("io.ktor:ktor-client-logging:2.0.0")
+    implementation("io.ktor:ktor-client-auth:2.0.0")
 }
 
 tasks.withType<KotlinCompile> {

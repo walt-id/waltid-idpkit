@@ -1,5 +1,6 @@
 {
   "externalUrl": "http://localhost:8080",
+  "jsProjectExternalUrl":"http://localhost:4000",
   "claimConfig": {
     "vc_mappings": [
       {
@@ -62,9 +63,9 @@
       }
     ],
     "default_nft_token_claim": {
-        "chain": "MUMBAI",
-        "factorySmartContractAddress": "0x7d46d74023507d30ccc2d3868129fbe4e400e40b",
-        "smartContractAddress": "0x76caad37dcfaa96fbbc83c374b6686a2a1c8ac86"
+        "chain": "GHOSTNET",
+        "factorySmartContractAddress": "",
+        "smartContractAddress": "KT1Ennr99qgqzKEUCEqypXEexH4wWzVL5a9m"
     },
     "default_vp_token_claim": {
       "presentation_definition": {

@@ -46,7 +46,7 @@ class NFTClaimMapping(
 ) : ClaimMapping(scope, claim) {
     override fun fillClaims(verificationResult: ResponseVerificationResult, claimBuilder: JWTClaimsSet.Builder) {
         val attribute =
-            verificationResult.nftresponseVerificationResult?.metadata?.attributes?.firstOrNull { a -> a.trait_type == trait }
+            verificationResult.nftresponseVerificationResult?.metadata?.evmNftMetadata?.attributes?.firstOrNull { a -> a.trait_type == trait }
                 ?: throw BadRequestResponse("Requested nft metadata trait not found in verification response")
         claimBuilder.claim(trait, attribute.value)
     }
