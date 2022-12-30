@@ -20,9 +20,9 @@
     "ethers": "^5.7.2",
     "nuxt": "^2.15.8",
     "qrious": "^4.0.2",
-    "vue": "2.7.8",
-    "vue-server-renderer": "2.7.8",
-    "vue-template-compiler": "2.7.8",
+    "vue": "2.7.14",
+    "vue-server-renderer": "2.7.14",
+    "vue-template-compiler": "2.7.14",
     "web3modal": "^1.9.9",
     "webpack": "^4.46.0"
   },
