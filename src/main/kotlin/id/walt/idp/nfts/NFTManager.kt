@@ -9,6 +9,7 @@ import id.walt.idp.oidc.OIDCManager
 import id.walt.idp.oidc.ResponseVerificationResult
 import id.walt.nftkit.opa.DynamicPolicy
 import id.walt.nftkit.services.*
+import id.walt.nftkit.utilis.Common
 import java.math.BigInteger
 import java.net.URI
 import io.ktor.client.*
@@ -92,13 +93,13 @@ object NFTManager {
         val session = OIDCManager.getOIDCSession(sessionId)
         if(session?.nftTokenClaim?.factorySmartContractAddress.equals("") || session?.nftTokenClaim?.factorySmartContractAddress == null ) {
             val balance = NftService.balanceOf(
-                session?.nftTokenClaim?.chain!!,
+                Common.getEVMChain(session?.nftTokenClaim?.chain!!.toString()),
                 session.nftTokenClaim.smartContractAddress!!, account.trim()
             )
             return balance!!.compareTo(BigInteger("0")) == 1
         }else{
             println("data nft verification")
-            return VerificationService.dataNftVerification(session?.nftTokenClaim?.chain!!, session?.nftTokenClaim?.factorySmartContractAddress!!,
+            return VerificationService.dataNftVerification(Common.getEVMChain(session?.nftTokenClaim?.chain!!.toString()), session?.nftTokenClaim?.factorySmartContractAddress!!,
                     session?.nftTokenClaim?.smartContractAddress!!, account.trim(), "", null)
         }
     }
