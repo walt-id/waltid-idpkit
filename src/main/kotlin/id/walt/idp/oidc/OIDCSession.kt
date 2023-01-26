@@ -10,6 +10,7 @@ data class OIDCSession(
     val id: String,
     val authRequest: AuthorizationRequest,
     val authorizationMode: OIDCManager.AuthorizationMode,
+    val nonce: String,
     val presentationDefinition: PresentationDefinition? = null,
 
     val siweSession: SiweSession? = null,

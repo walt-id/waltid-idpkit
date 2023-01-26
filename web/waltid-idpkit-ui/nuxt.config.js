@@ -54,7 +54,6 @@ export default {
     proxy: {
         // '/verifier-api/': 'https://wallet.waltid.org',
         // '/api/': 'https://wallet.waltid.org'
-        '/openIdRequestUri/': 'http://localhost:8080/',
         '/verifier-api/': 'http://localhost:8080/',
         '/api/': 'http://localhost:8080/'
     }

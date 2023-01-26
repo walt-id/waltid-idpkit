@@ -19,6 +19,7 @@ import id.walt.credentials.w3c.toVerifiablePresentation
 import id.walt.custodian.Custodian
 import id.walt.idp.config.IDPConfig
 import id.walt.idp.oidc.OIDCClientRegistry
+import id.walt.idp.oidc.OIDCManager
 import id.walt.model.DidMethod
 import id.walt.model.dif.InputDescriptor
 import id.walt.model.dif.PresentationDefinition
@@ -49,6 +50,7 @@ import io.kotest.matchers.string.shouldContain
 import io.mockk.every
 import io.mockk.mockkObject
 import java.net.URI
+import java.nio.file.Path
 import java.util.*
 
 class OIDCTest : OIDCTestBase() {
@@ -77,7 +79,6 @@ class OIDCTest : OIDCTestBase() {
 
     private fun simulateAuthReqToAppRedirect(
         authReq: AuthorizationRequest,
-        targetWallet: WalletConfiguration,
         oidcMeta: OIDCProviderMetadata
     ): URI {
 
@@ -104,13 +105,13 @@ class OIDCTest : OIDCTestBase() {
 
         // IDP: redirects to IDPKIT WALLET CONNECT PAGE
         authHttpResponse.statusCode shouldBe HttpCode.FOUND.status
-        authHttpResponse.location.authority shouldBe URI.create(VerifierTenant.config.verifierUiUrl).authority
+        authHttpResponse.location.path shouldBe "/${OIDCManager.walletChooser.presentPath}"
         val state = URLUtils.parseParameters(authHttpResponse.location.query).get("state")?.firstOrNull()
         state shouldNotBe null
 
         // IDPKIT WALLET CONNECT PAGE: redirect to wallet
         val requestInfoResponse = HTTPRequest(HTTPRequest.Method.GET,
-            URI.create("${IDPConfig.config.externalUrl}/api/openIdRequestUri?state=${state!!}")).send()
+            URI.create("${IDPConfig.config.externalUrl}/api/oidc/web-api/getWalletRedirectAddress?walletId=x-device&state=${state!!}")).send()
         requestInfoResponse.indicatesSuccess() shouldBe true
         val requestInfo = KlaxonWithConverters.parse<PresentationRequestInfo>(requestInfoResponse.content)
         requestInfo shouldNotBe null
@@ -138,7 +139,6 @@ class OIDCTest : OIDCTestBase() {
 
     @Test
     fun testGetVpTokenCodeFlow() {
-        val targetWallet = VerifierTenant.config.wallets.values.first()
         // APP: get oidc discovery document
         val metadata = shouldNotThrowAny { OIDCProviderMetadata.resolve(Issuer(OIDC_URI)) }
         // APP: init oidc session (par request)
@@ -156,13 +156,12 @@ class OIDCTest : OIDCTestBase() {
                     )
                 ).toJSONString()
             )
-            .customParameter("walletId", targetWallet.id)
             .state(State("TEST"))
             .redirectionURI(APP_REDIRECT)
             .build()
 
         // IDP: redirects to APP with authorization code
-        val redirectToAPP = simulateAuthReqToAppRedirect(authReq, targetWallet, metadata)
+        val redirectToAPP = simulateAuthReqToAppRedirect(authReq, metadata)
         redirectToAPP.query shouldContain "state=TEST"
         redirectToAPP.query shouldContain "code="
 
@@ -199,7 +198,6 @@ class OIDCTest : OIDCTestBase() {
 
     @Test
     fun testGetVpTokenInIdToken() {
-        val targetWallet = VerifierTenant.config.wallets.values.first()
         // APP: get oidc discovery document
         val metadata = shouldNotThrowAny { OIDCProviderMetadata.resolve(Issuer(OIDC_URI)) }
         // APP: init oidc session (par request)
@@ -217,13 +215,12 @@ class OIDCTest : OIDCTestBase() {
                     )
                 ).toJSONString()
             )
-            .customParameter("walletId", targetWallet.id)
             .state(State("TEST"))
             .redirectionURI(APP_REDIRECT)
             .build()
 
         // IDP: redirects to APP with authorization code
-        val redirectToAPP = simulateAuthReqToAppRedirect(authReq, targetWallet, metadata)
+        val redirectToAPP = simulateAuthReqToAppRedirect(authReq, metadata)
         redirectToAPP.fragment shouldNotBe null
         redirectToAPP.fragment shouldContain "id_token="
         val authResp = AuthenticationResponseParser.parse(redirectToAPP)
@@ -234,19 +231,17 @@ class OIDCTest : OIDCTestBase() {
 
     @Test
     fun testGetProfileScopeCodeFlow() {
-        val targetWallet = VerifierTenant.config.wallets.values.first()
         // APP: get oidc discovery document
         val metadata = shouldNotThrowAny { OIDCProviderMetadata.resolve(Issuer(OIDC_URI)) }
         // APP: init oidc session (par request)
         val authReq = AuthorizationRequest.Builder(ResponseType.CODE, ClientID(CLIENT_ID))
             .scope(Scope(OIDCScopeValue.OPENID, OIDCScopeValue.PROFILE))
-            .customParameter("walletId", targetWallet.id)
             .state(State("TEST"))
             .redirectionURI(APP_REDIRECT)
             .build()
 
         // IDP: redirects to APP with authorization code
-        val redirectToAPP = simulateAuthReqToAppRedirect(authReq, targetWallet, metadata)
+        val redirectToAPP = simulateAuthReqToAppRedirect(authReq, metadata)
         redirectToAPP.query shouldContain "state=TEST"
         redirectToAPP.query shouldContain "code="
 

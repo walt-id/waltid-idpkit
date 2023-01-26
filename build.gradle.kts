@@ -34,7 +34,7 @@ dependencies {
 
     // SSIKIT
     implementation("id.walt:waltid-ssi-kit:1.13.0-SNAPSHOT6")
-    implementation("id.walt:waltid-walletkit:0.6.0")
+    implementation("id.walt:waltid-walletkit:0.7.0-SNAPSHOT")
 
     // Service-Matrix
     implementation("id.walt.servicematrix:WaltID-ServiceMatrix:1.1.3")

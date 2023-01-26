@@ -6,8 +6,8 @@
             </div>
 
             <div class="text-center">
-                <a v-if="requestInfo && requestInfo.requestId" class="btn btn-success" v-on:click="redirectToWebWallet">Click
-                    to login with Web Wallet</a> <a v-else class="btn btn-danger" v-on:click="redirectBack">Return to
+                <a v-if="requestInfo && requestInfo.requestId" class="btn btn-success" @click="redirectToWebWallet('walt.id')">Click
+                    to login with Web Wallet</a> <a v-else class="btn btn-danger" @click="redirectBack">Return to
                 previous page</a>
             </div>
 
@@ -43,21 +43,11 @@ export default {
             let state = route.query.state ? route.query.state : route.params.state
             console.log("Using state: " + state)
 
-            const requestInfo = await $axios.$get('/api/openIdRequestUri?state=' + state)
+            const requestInfo = await $axios.$get('/api/oidc/web-api/getWalletRedirectAddress?walletId=x-device&state=' + state)
 
             if (requestInfo) {
-                let reqTimer = setInterval(async () => {
-                    let response = await fetch("/verifier-api/default/verify/isVerified?state=" + requestInfo.requestId);
-
-                    if (response.status === 200) {
-                        window.clearTimeout(reqTimer);
-
-                        window.location = await response.text();
-                    }
-                }, 1000)
-
                 console.log(requestInfo)
-                return {requestInfo}
+                return {requestInfo, state}
             } else return null
         } else {
             console.log("No state in params!")
@@ -72,16 +62,27 @@ export default {
                 size: 300
             })
         }
+        let reqTimer = setInterval(async () => {
+        let response = await fetch("/verifier-api/default/verify/isVerified?state=" + this.requestInfo.requestId);
+
+        if (response.status === 200) {
+            window.clearTimeout(reqTimer);
+
+            window.location = await response.text();
+        }
+    }, 1000)
     },
     methods: {
-        redirectToWebWallet: function () {
+        async redirectToWebWallet(walletId) {
+            console.log("redirect to wallet", walletId, "state", this.state)
+            let walletReqInfo = await this.$axios.$get('/api/oidc/web-api/getWalletRedirectAddress?walletId=' + walletId + '&state=' + this.state)
+            if(walletReqInfo != null) {
+                console.log("Wallet url: " + walletReqInfo.url)
 
-            let reqUrl = this.requestInfo.url
-            let reqParams = reqUrl.substring(reqUrl.indexOf('?'), reqUrl.length - 1)
-            let fullUrl = "https://wallet.walt-test.cloud/api/siop/initiatePresentation/?" + reqParams
-            console.log("Full url: " + fullUrl)
-
-            window.location = fullUrl
+                window.location = walletReqInfo.url
+            } else {
+                console.log("No wallet req info")
+            }
         },
         redirectBack: function () {
             window.history.back()
