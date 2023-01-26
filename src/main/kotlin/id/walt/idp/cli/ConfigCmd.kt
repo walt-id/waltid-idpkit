@@ -8,6 +8,8 @@ import com.github.ajalt.clikt.parameters.options.convert
 import com.github.ajalt.clikt.parameters.options.flag
 import com.github.ajalt.clikt.parameters.options.option
 import id.walt.idp.oidc.OIDCManager
+import id.walt.multitenancy.TenantContext
+import id.walt.multitenancy.TenantId
 import id.walt.services.context.Context
 import id.walt.verifier.backend.VerifierManager
 import id.walt.webwallet.backend.context.WalletContextManager
@@ -20,7 +22,7 @@ class ConfigCmd : CliktCommand(name = "config", help = "Configure or setup dids,
     val context: Context by mutuallyExclusiveOptions(
         option("--oidc", help = "Configure OIDC context").flag().convert { if (it) OIDCManager.oidcContext; else null },
         option("--siop", help = "Configure SIOP verifier context").flag()
-            .convert { if (it) VerifierManager.getService().verifierContext; else null }
+            .convert { if (it) VerifierManager.getService().getVerifierContext(TenantId.DEFAULT_TENANT); else null }
     ).single().required()
 
     override fun run() {

@@ -11,6 +11,7 @@ import id.walt.services.hkvstore.InMemoryHKVStore
 import id.walt.services.keystore.HKVKeyStoreService
 import id.walt.services.vcstore.HKVVcStoreService
 import id.walt.verifier.backend.VerifierConfig
+import id.walt.verifier.backend.VerifierTenant
 import id.walt.webwallet.backend.context.UserContext
 import id.walt.webwallet.backend.context.WalletContextManager
 import io.kotest.core.spec.style.AnnotationSpec
@@ -44,8 +45,8 @@ abstract class OIDCTestBase : AnnotationSpec() {
             claimConfig = TEST_CLAIM_MAPPINGS
         )
 
-        mockkObject(VerifierConfig)
-        every { VerifierConfig.config } returns VerifierConfig("http://localhost:8080", "http://localhost:8080/api/siop")
+        mockkObject(VerifierTenant)
+        every { VerifierTenant.config } returns VerifierConfig("http://localhost:8080/sharecredential?state=", "http://localhost:8080/api/siop/default")
 
         customInit()
 

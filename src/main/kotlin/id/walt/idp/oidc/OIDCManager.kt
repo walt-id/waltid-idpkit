@@ -20,7 +20,7 @@ import com.nimbusds.openid.connect.sdk.*
 import com.nimbusds.openid.connect.sdk.claims.UserInfo
 import com.nimbusds.openid.connect.sdk.op.OIDCProviderMetadata
 import com.nimbusds.openid.connect.sdk.token.OIDCTokens
-import id.walt.common.klaxonWithConverters
+import id.walt.common.KlaxonWithConverters
 import id.walt.crypto.KeyAlgorithm
 import id.walt.crypto.KeyId
 import id.walt.idp.IDPManager
@@ -36,16 +36,15 @@ import id.walt.idp.siop.SIOPState
 import id.walt.idp.siwe.SiweManager
 import id.walt.idp.util.WaltIdAlgorithm
 import id.walt.model.dif.*
+import id.walt.multitenancy.TenantId
 import id.walt.nftkit.services.Chain
+import id.walt.services.context.ContextManager
 import id.walt.services.key.KeyFormat
 import id.walt.services.key.KeyService
 import id.walt.services.keystore.KeyType
 import id.walt.services.oidc.OIDCUtils
 import id.walt.siwe.configuration.SiweSession
-import id.walt.verifier.backend.PresentationRequestInfo
-import id.walt.verifier.backend.SIOPResponseVerificationResult
-import id.walt.verifier.backend.VerifierConfig
-import id.walt.verifier.backend.VerifierManager
+import id.walt.verifier.backend.*
 import id.walt.webwallet.backend.context.WalletContextManager
 import io.javalin.http.BadRequestResponse
 import io.javalin.http.Context
@@ -80,6 +79,9 @@ object OIDCManager : IDPManager {
 
     val oidcContext
         get() = ContextFactory.getContextFor(ContextId.OIDC)
+
+    val verifierManager
+        get() = VerifierManager.getService()
 
     private lateinit var keyId: KeyId
     private lateinit var jwtAlgorithm: Algorithm
@@ -129,11 +131,13 @@ object OIDCManager : IDPManager {
                 "openid",
                 *(IDPConfig.config.claimConfig?.allMappings()?.flatMap { m -> m.scope }?.toSet() ?: setOf()).toTypedArray()
             )
-            setCustomParameter("wallets_supported", VerifierConfig.config.wallets.values.map { wallet ->
-                mapOf(
-                    "id" to wallet.id,
-                    "description" to wallet.description
-                )
+            setCustomParameter("wallets_supported", ContextManager.runWith(verifierManager.getVerifierContext(TenantId.DEFAULT_TENANT)) {
+                VerifierTenant.config.wallets.values.map { wallet ->
+                    mapOf(
+                        "id" to wallet.id,
+                        "description" to wallet.description
+                    )
+                }
             })
             tokenEndpointAuthMethods = listOf(ClientAuthenticationMethod.CLIENT_SECRET_BASIC)
         }
@@ -220,11 +224,11 @@ object OIDCManager : IDPManager {
                 else -> null
             },
             wallet = when (authorizationMode) {
-                AuthorizationMode.SIOP -> {
+                AuthorizationMode.SIOP -> ContextManager.runWith(verifierManager.getVerifierContext(TenantId.DEFAULT_TENANT)) {
                     val walletId = authRequest.customParameters["walletId"]?.firstOrNull()
-                        ?: VerifierConfig.config.wallets.values.map { wc -> wc.id }.firstOrNull()
+                        ?: VerifierTenant.config.wallets.values.map { wc -> wc.id }.firstOrNull()
                         ?: throw InternalServerErrorResponse("Known wallets not configured")
-                    VerifierConfig.config.wallets[walletId]
+                    VerifierTenant.config.wallets[walletId]
                         ?: throw BadRequestResponse("No wallet configuration found for given walletId")
                 }
 
@@ -264,43 +268,35 @@ object OIDCManager : IDPManager {
         val state = ctx.queryParam("state") ?: throw IllegalStateException("No state supplied")
         val request = requestCache.getIfPresent(state) ?: throw IllegalStateException("State not known")
 
-        val reqJson = klaxonWithConverters.toJsonString(request)
+        val reqJson = KlaxonWithConverters.toJsonString(request)
 
         ctx.result(reqJson).contentType("application/json")
         // ctx.json(...)
     }
 
     fun getWalletRedirectionUri(session: OIDCSession): URI {
-
-        when (session.authorizationMode) {
-            AuthorizationMode.SIOP -> {
+        return when (session.authorizationMode) {
+            AuthorizationMode.SIOP -> ContextManager.runWith(verifierManager.getVerifierContext(TenantId.DEFAULT_TENANT)) {
                 val walletUrl = URI.create("${session.wallet.url}/${session.wallet.presentPath}")
-                val siopReq = VerifierManager.getService().newRequest(
-                    walletUrl = walletUrl,
-                    presentationDefinition = session.presentationDefinition!!,
-                    //state = session.id
-                    state = SIOPState(idpType, session.id).encode()
-                )
+                val siopReq = verifierManager.newRequest(
+                        walletUrl = walletUrl,
+                        presentationDefinition = session.presentationDefinition!!,
+                        //state = session.id
+                        state = SIOPState(idpType, session.id).encode()
+                    )
 
                 val presReq = PresentationRequestInfo(siopReq.state.value, siopReq.toURI().toString())
                 requestCache.put(siopReq.state.value, presReq)
 
-                return URI.create("${VerifierConfig.config.verifierUiUrl}${siopReq.state.value}")
-
-                //return siopReq.toURI().also { log.debug { "request redirect url is: $it" } }
-
-                //println( siopReq.endpointURI)
-                //println( siopReq.toQueryString())
-                //println("URL IS ${siopReq.toHTTPRequest().uri}")
-                //return siopReq.toHTTPRequest().uri
+                URI.create("${VerifierTenant.config.verifierUiUrl}${siopReq.state.value}")
             }
 
             AuthorizationMode.NFT -> {
-                return URI.create("${session.wallet.url}?session=${session.id}&nonce=${session.siweSession?.nonce}&redirect_uri=${NFTManager.NFTApiUrl}/callback")
+                URI.create("${session.wallet.url}?session=${session.id}&nonce=${session.siweSession?.nonce}&redirect_uri=${NFTManager.NFTApiUrl}/callback")
             }
 
             AuthorizationMode.SIWE -> {
-                return URI.create("${session.wallet.url}?session=${session.id}&nonce=${session.siweSession?.nonce}&redirect_uri=${SiweManager.SIWEApiUrl}/callback")
+                URI.create("${session.wallet.url}?session=${session.id}&nonce=${session.siweSession?.nonce}&redirect_uri=${SiweManager.SIWEApiUrl}/callback")
             }
         }
     }

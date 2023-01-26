@@ -3,7 +3,7 @@ package id.walt.idp.nfts
 import com.nimbusds.jose.shaded.json.JSONObject
 import com.nimbusds.jose.shaded.json.parser.JSONParser
 import com.nimbusds.oauth2.sdk.AuthorizationRequest
-import id.walt.common.klaxonWithConverters
+import id.walt.common.KlaxonWithConverters
 import id.walt.idp.config.IDPConfig
 import id.walt.idp.oidc.OIDCManager
 import id.walt.idp.oidc.ResponseVerificationResult
@@ -65,7 +65,7 @@ object NFTManager {
                         else -> null
                     }
                 }
-                ?.let { klaxonWithConverters.parse<NFTClaims>(it) } ?: NFTClaims()
+                ?.let { KlaxonWithConverters.parse<NFTClaims>(it) } ?: NFTClaims()
         return claims
     }
 

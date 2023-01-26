@@ -5,15 +5,19 @@ import com.nimbusds.oauth2.sdk.auth.ClientSecretBasic
 import com.nimbusds.oauth2.sdk.auth.Secret
 import com.nimbusds.oauth2.sdk.client.ClientInformation
 import com.nimbusds.oauth2.sdk.client.ClientMetadata
+import com.nimbusds.oauth2.sdk.http.HTTPRequest
 import com.nimbusds.oauth2.sdk.id.ClientID
 import com.nimbusds.oauth2.sdk.id.Issuer
 import com.nimbusds.oauth2.sdk.id.State
+import com.nimbusds.oauth2.sdk.util.URLUtils
 import com.nimbusds.openid.connect.sdk.*
 import com.nimbusds.openid.connect.sdk.op.OIDCProviderMetadata
+import id.walt.common.KlaxonWithConverters
 import id.walt.credentials.w3c.templates.VcTemplateManager
 import id.walt.credentials.w3c.toVerifiableCredential
 import id.walt.credentials.w3c.toVerifiablePresentation
 import id.walt.custodian.Custodian
+import id.walt.idp.config.IDPConfig
 import id.walt.idp.oidc.OIDCClientRegistry
 import id.walt.model.DidMethod
 import id.walt.model.dif.InputDescriptor
@@ -27,7 +31,9 @@ import id.walt.services.oidc.OIDCUtils
 import id.walt.signatory.ProofConfig
 import id.walt.signatory.ProofType
 import id.walt.signatory.Signatory
+import id.walt.verifier.backend.PresentationRequestInfo
 import id.walt.verifier.backend.VerifierConfig
+import id.walt.verifier.backend.VerifierTenant
 import id.walt.verifier.backend.WalletConfiguration
 import io.javalin.http.HttpCode
 import io.kotest.assertions.throwables.shouldNotThrowAny
@@ -96,13 +102,21 @@ class OIDCTest : OIDCTestBase() {
                 followRedirects = false
             }.send()
 
-        // IDP: redirects to WALLET
+        // IDP: redirects to IDPKIT WALLET CONNECT PAGE
         authHttpResponse.statusCode shouldBe HttpCode.FOUND.status
-        authHttpResponse.location.authority shouldBe URI.create(targetWallet.url).authority
-        authHttpResponse.location.path.trim('/') shouldBe targetWallet.presentPath.trim('/')
+        authHttpResponse.location.authority shouldBe URI.create(VerifierTenant.config.verifierUiUrl).authority
+        val state = URLUtils.parseParameters(authHttpResponse.location.query).get("state")?.firstOrNull()
+        state shouldNotBe null
+
+        // IDPKIT WALLET CONNECT PAGE: redirect to wallet
+        val requestInfoResponse = HTTPRequest(HTTPRequest.Method.GET,
+            URI.create("${IDPConfig.config.externalUrl}/api/openIdRequestUri?state=${state!!}")).send()
+        requestInfoResponse.indicatesSuccess() shouldBe true
+        val requestInfo = KlaxonWithConverters.parse<PresentationRequestInfo>(requestInfoResponse.content)
+        requestInfo shouldNotBe null
 
         // WALLET: parse SIOP request
-        val siopReq = AuthorizationRequest.parse(authHttpResponse.location)
+        val siopReq = OIDC4VPService.parseOIDC4VPRequestUri(URI.create(requestInfo!!.url))
         val presentationDef = shouldNotThrowAny { OIDC4VPService.getPresentationDefinition(siopReq) }
         presentationDef.input_descriptors shouldNot beEmpty()
         siopReq.customParameters shouldContainKey "nonce"
@@ -122,9 +136,9 @@ class OIDCTest : OIDCTestBase() {
         return URI.create(OIDC4VPService.postSIOPResponse(siopReq, siopResponse))
     }
 
-    //@Test
+    @Test
     fun testGetVpTokenCodeFlow() {
-        val targetWallet = VerifierConfig.config.wallets.values.first()
+        val targetWallet = VerifierTenant.config.wallets.values.first()
         // APP: get oidc discovery document
         val metadata = shouldNotThrowAny { OIDCProviderMetadata.resolve(Issuer(OIDC_URI)) }
         // APP: init oidc session (par request)
@@ -183,9 +197,9 @@ class OIDCTest : OIDCTestBase() {
         vpToken shouldNotBe null
     }
 
-    //@Test
+    @Test
     fun testGetVpTokenInIdToken() {
-        val targetWallet = VerifierConfig.config.wallets.values.first()
+        val targetWallet = VerifierTenant.config.wallets.values.first()
         // APP: get oidc discovery document
         val metadata = shouldNotThrowAny { OIDCProviderMetadata.resolve(Issuer(OIDC_URI)) }
         // APP: init oidc session (par request)
@@ -218,9 +232,9 @@ class OIDCTest : OIDCTestBase() {
     }
 
 
-    //@Test
+    @Test
     fun testGetProfileScopeCodeFlow() {
-        val targetWallet = VerifierConfig.config.wallets.values.first()
+        val targetWallet = VerifierTenant.config.wallets.values.first()
         // APP: get oidc discovery document
         val metadata = shouldNotThrowAny { OIDCProviderMetadata.resolve(Issuer(OIDC_URI)) }
         // APP: init oidc session (par request)

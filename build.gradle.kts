@@ -33,11 +33,11 @@ dependencies {
     implementation("com.github.ajalt.clikt:clikt:3.5.0")
 
     // SSIKIT
-    implementation("id.walt:waltid-ssi-kit:1.13.0-SNAPSHOT2")
-    implementation("id.walt:waltid-walletkit:1.1-SNAPSHOT")
+    implementation("id.walt:waltid-ssi-kit:1.13.0-SNAPSHOT6")
+    implementation("id.walt:waltid-walletkit:0.6.0")
 
     // Service-Matrix
-    implementation("id.walt.servicematrix:WaltID-ServiceMatrix:1.1.0")
+    implementation("id.walt.servicematrix:WaltID-ServiceMatrix:1.1.3")
 
     // NftKit
     implementation("id.walt:waltid-nftkit:1.0.0")

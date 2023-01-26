@@ -1,6 +1,6 @@
 {
   "verifierUiUrl": "http://localhost:8080/sharecredential?state=",
-  "verifierApiUrl": "http://localhost:8080/api/siop",
+  "verifierApiUrl": "http://localhost:8080/api/siop/default",
 
   "wallets": {
     "localhost": {

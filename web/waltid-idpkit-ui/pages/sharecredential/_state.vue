@@ -47,7 +47,7 @@ export default {
 
             if (requestInfo) {
                 let reqTimer = setInterval(async () => {
-                    let response = await fetch("/verifier-api/verify/isVerified?state=" + requestInfo.requestId);
+                    let response = await fetch("/verifier-api/default/verify/isVerified?state=" + requestInfo.requestId);
 
                     if (response.status === 200) {
                         window.clearTimeout(reqTimer);
