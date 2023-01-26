@@ -5,7 +5,15 @@ import com.nimbusds.oauth2.sdk.*
 import com.nimbusds.oauth2.sdk.client.*
 import com.nimbusds.oauth2.sdk.http.ServletUtils
 import com.nimbusds.openid.connect.sdk.op.OIDCProviderMetadata
+import id.walt.common.KlaxonWithConverters
+import id.walt.idp.IDPType
 import id.walt.idp.config.IDPConfig
+import id.walt.idp.siop.SIOPState
+import id.walt.multitenancy.TenantId
+import id.walt.services.context.ContextManager
+import id.walt.verifier.backend.PresentationRequestInfo
+import id.walt.verifier.backend.VerifierManager
+import id.walt.verifier.backend.VerifierTenant
 import io.javalin.apibuilder.ApiBuilder.*
 import io.javalin.core.security.RouteRole
 import io.javalin.http.*
@@ -135,6 +143,16 @@ object OIDCController {
                         OIDCController::deleteRegisteredClient
                     ), OIDCAuthorizationRole.CLIENT_REGISTRATION
                 )
+            }
+            path("web-api") {
+                get("getWalletRedirectAddress", documented(document().operation {
+                    it.summary("Get wallet redirect address for session state and selected wallet")
+                        .operationId("getWalletRedirectAddress")
+                }
+                    .queryParam<String>("state")
+                    .queryParam<String>("walletId")
+                    .body<PresentationRequestInfo>("200"), OIDCController::getWalletRedirectAddress
+                ), OIDCAuthorizationRole.UNAUTHORIZED) // TODO: authorization of idpkit web ui (?)
             }
         }
 
@@ -309,5 +327,25 @@ object OIDCController {
             OIDCClientRegistry.getClient(clientId).orElseThrow { UnauthorizedResponse("Client with given ID not found.") }
         OIDCClientRegistry.unregisterClient(clientInfo)
         ctx.status(HttpCode.NO_CONTENT)
+    }
+
+    private fun getWalletRedirectAddress(ctx: Context) {
+        val state = ctx.queryParam("state")?.let { SIOPState.decode(it) } ?: throw BadRequestResponse("Missing or invalid state parameter")
+        if(state.idpType != IDPType.OIDC) throw BadRequestResponse("Invalid IDP type")
+        val walletId = ctx.queryParam("walletId") ?: throw BadRequestResponse("Missing parameter walletId")
+        val session = OIDCManager.getOIDCSession(state.idpSessionId) ?: throw BadRequestResponse("Unknown OIDC session")
+        val wallet = when(walletId) {
+            OIDCManager.xDeviceWallet.id -> OIDCManager.xDeviceWallet
+            OIDCManager.walletChooser.id -> OIDCManager.walletChooser
+            else -> ContextManager.runWith(VerifierManager.getService().getVerifierContext(TenantId.DEFAULT_TENANT)) {
+                VerifierTenant.config.wallets[walletId]
+            } ?: throw BadRequestResponse("Unknown wallet id")
+        }
+        ctx.contentType(ContentType.APPLICATION_JSON).result(
+            KlaxonWithConverters.toJsonString(
+                PresentationRequestInfo(
+                    state.encode(),
+                    OIDCManager.getWalletRedirectionUri(session, wallet).toString()
+        )))
     }
 }

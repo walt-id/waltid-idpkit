@@ -8,6 +8,7 @@ import com.google.common.cache.Cache
 import com.google.common.cache.CacheBuilder
 import com.nimbusds.jose.jwk.JWK
 import com.nimbusds.jose.jwk.JWKSet
+import com.nimbusds.jose.util.Base64URL
 import com.nimbusds.jwt.JWTClaimsSet
 import com.nimbusds.oauth2.sdk.*
 import com.nimbusds.oauth2.sdk.auth.ClientAuthenticationMethod
@@ -54,6 +55,7 @@ import javalinjwt.JWTProvider
 import mu.KotlinLogging
 import java.net.URI
 import java.net.URLEncoder
+import java.nio.ByteBuffer
 import java.nio.charset.StandardCharsets
 import java.time.Duration
 import java.util.*
@@ -64,8 +66,6 @@ object OIDCManager : IDPManager {
     val EXPIRATION_TIME: Duration = Duration.ofMinutes(5)
 
     private val sessionCache: Cache<String, OIDCSession> =
-        CacheBuilder.newBuilder().expireAfterAccess(EXPIRATION_TIME.seconds, TimeUnit.SECONDS).build()
-    private val requestCache: Cache<String, PresentationRequestInfo> =
         CacheBuilder.newBuilder().expireAfterAccess(EXPIRATION_TIME.seconds, TimeUnit.SECONDS).build()
 
 
@@ -82,6 +82,21 @@ object OIDCManager : IDPManager {
 
     val verifierManager
         get() = VerifierManager.getService()
+
+    public val walletChooser = WalletConfiguration(
+        "wallet-chooser",
+        "",
+        "sharecredential",
+        "", ""
+    )
+
+    public val xDeviceWallet = WalletConfiguration(
+        id = "x-device",
+        url = "openid://",
+        presentPath = "",
+        receivePath = "",
+        description = "cross device"
+    )
 
     private lateinit var keyId: KeyId
     private lateinit var jwtAlgorithm: Algorithm
@@ -208,6 +223,13 @@ object OIDCManager : IDPManager {
             ?: throw BadRequestResponse("No nft token claim defined for this authorization request")
     }
 
+    private  fun convertUUIDToBytes(uuid: UUID): ByteArray?{
+        val bb: ByteBuffer = ByteBuffer.wrap(ByteArray(16))
+        bb.putLong(uuid.mostSignificantBits)
+        bb.putLong(uuid.leastSignificantBits)
+        return bb.array()
+    }
+
     fun initOIDCSession(authRequest: AuthorizationRequest): OIDCSession {
         val authorizationMode = getAuthorizationModeFor(authRequest)
 
@@ -215,6 +237,7 @@ object OIDCManager : IDPManager {
             id = UUID.randomUUID().toString(),
             authRequest = authRequest,
             authorizationMode = authorizationMode,
+            nonce = Base64URL.encode(convertUUIDToBytes(UUID.randomUUID())).toString(),
             presentationDefinition = when (authorizationMode) {
                 AuthorizationMode.SIOP -> generatePresentationDefinition(authRequest)
                 else -> null
@@ -225,11 +248,8 @@ object OIDCManager : IDPManager {
             },
             wallet = when (authorizationMode) {
                 AuthorizationMode.SIOP -> ContextManager.runWith(verifierManager.getVerifierContext(TenantId.DEFAULT_TENANT)) {
-                    val walletId = authRequest.customParameters["walletId"]?.firstOrNull()
-                        ?: VerifierTenant.config.wallets.values.map { wc -> wc.id }.firstOrNull()
-                        ?: throw InternalServerErrorResponse("Known wallets not configured")
-                    VerifierTenant.config.wallets[walletId]
-                        ?: throw BadRequestResponse("No wallet configuration found for given walletId")
+                    authRequest.customParameters["walletId"]?.map { VerifierTenant.config.wallets[it] }?.firstOrNull()
+                        ?: walletChooser
                 }
 
                 AuthorizationMode.NFT -> NFTConfig.config.nftWallet
@@ -264,39 +284,32 @@ object OIDCManager : IDPManager {
     private const val OIDC_API_PATH: String = "api/oidc"
     val OIDCApiUrl: String get() = "${IDPConfig.config.externalUrl}/$OIDC_API_PATH"
 
-    fun getIdpKitOpenIdRequestUri(ctx: Context) {
-        val state = ctx.queryParam("state") ?: throw IllegalStateException("No state supplied")
-        val request = requestCache.getIfPresent(state) ?: throw IllegalStateException("State not known")
-
-        val reqJson = KlaxonWithConverters.toJsonString(request)
-
-        ctx.result(reqJson).contentType("application/json")
-        // ctx.json(...)
-    }
-
-    fun getWalletRedirectionUri(session: OIDCSession): URI {
+    fun getWalletRedirectionUri(session: OIDCSession, selectedWallet: WalletConfiguration? = null): URI {
+        val wallet = selectedWallet ?: session.wallet
         return when (session.authorizationMode) {
             AuthorizationMode.SIOP -> ContextManager.runWith(verifierManager.getVerifierContext(TenantId.DEFAULT_TENANT)) {
-                val walletUrl = URI.create("${session.wallet.url}/${session.wallet.presentPath}")
-                val siopReq = verifierManager.newRequest(
+                val walletUrl = URI.create("${wallet.url}/${wallet.presentPath}")
+                if(wallet.id == walletChooser.id){
+                    URI.create("${walletUrl}?state=${SIOPState(idpType, session.id).encode()}")
+                } else {
+                    val siopReq = verifierManager.newRequest(
                         walletUrl = walletUrl,
                         presentationDefinition = session.presentationDefinition!!,
                         //state = session.id
-                        state = SIOPState(idpType, session.id).encode()
+                        state = SIOPState(idpType, session.id).encode(),
+                        responseMode = if(wallet.id == xDeviceWallet.id) ResponseMode("post") else ResponseMode.FORM_POST,
+                        nonce = session.nonce
                     )
-
-                val presReq = PresentationRequestInfo(siopReq.state.value, siopReq.toURI().toString())
-                requestCache.put(siopReq.state.value, presReq)
-
-                URI.create("${VerifierTenant.config.verifierUiUrl}${siopReq.state.value}")
+                    siopReq.toURI()
+                }
             }
 
             AuthorizationMode.NFT -> {
-                URI.create("${session.wallet.url}?session=${session.id}&nonce=${session.siweSession?.nonce}&redirect_uri=${NFTManager.NFTApiUrl}/callback")
+                URI.create("${wallet.url}?session=${session.id}&nonce=${session.siweSession?.nonce}&redirect_uri=${NFTManager.NFTApiUrl}/callback")
             }
 
             AuthorizationMode.SIWE -> {
-                URI.create("${session.wallet.url}?session=${session.id}&nonce=${session.siweSession?.nonce}&redirect_uri=${SiweManager.SIWEApiUrl}/callback")
+                URI.create("${wallet.url}?session=${session.id}&nonce=${session.siweSession?.nonce}&redirect_uri=${SiweManager.SIWEApiUrl}/callback")
             }
         }
     }

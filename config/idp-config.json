@@ -1,5 +1,5 @@
 {
-  "externalUrl": "http://localhost:8080",
+  "externalUrl": "http://localhost:8090",
   "jsProjectExternalUrl":"http://localhost:4000",
   "claimConfig": {
     "vc_mappings": [

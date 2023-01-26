@@ -23,7 +23,6 @@ object IDPRestAPI {
             path("verifier-api", VerifierController::routes)
 
             path("api") {
-                get("openIdRequestUri", OIDCManager::getIdpKitOpenIdRequestUri)
                 path("oidc", OIDCController::routes)
                 path("siop", VerifierController::routes)
                 path("nft", NFTController::routes)
