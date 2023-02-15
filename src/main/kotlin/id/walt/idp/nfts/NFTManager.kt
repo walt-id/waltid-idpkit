@@ -65,7 +65,7 @@ object NFTManager {
                         else -> null
                     }
                 }
-                ?.let { KlaxonWithConverters.parse<NFTClaims>(it) } ?: NFTClaims()
+                ?.let { KlaxonWithConverters().parse<NFTClaims>(it) } ?: NFTClaims()
         return claims
     }
 
@@ -99,15 +99,16 @@ object NFTManager {
             return balance!!.compareTo(BigInteger("0")) == 1
         }else{
             println("data nft verification")
-            return VerificationService.dataNftVerification(Common.getEVMChain(session?.nftTokenClaim?.chain!!.toString()), session?.nftTokenClaim?.factorySmartContractAddress!!,
-                    session?.nftTokenClaim?.smartContractAddress!!, account.trim(), "", null)
+            return VerificationService.dataNftVerification(Common.getEVMChain(session.nftTokenClaim.chain!!.toString()),
+                session.nftTokenClaim.factorySmartContractAddress,
+                    session.nftTokenClaim.smartContractAddress!!, account.trim(), "", null)
         }
     }
 
     private fun tezosNftCollectionOwnershipVerification(sessionId: String, account: String): Boolean {
         val session = OIDCManager.getOIDCSession(sessionId)
         val result = VerificationService.verifyNftOwnershipWithinCollection(session?.nftTokenClaim?.chain!!,
-            session?.nftTokenClaim?.smartContractAddress!!,account)
+            session.nftTokenClaim.smartContractAddress!!,account)
             return result
 
     }
