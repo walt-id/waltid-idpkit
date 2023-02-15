@@ -43,7 +43,7 @@ dependencies {
     implementation("id.walt:waltid-nftkit:1.0.0")
 
     // walt-siwe
-    implementation("id.walt:waltid-siwe:0.1.0")
+    implementation("id.walt:waltid-siwe:0.1.0-SNAPSHOT")
 
     // Logging
     implementation("org.slf4j:slf4j-api:2.0.3")
