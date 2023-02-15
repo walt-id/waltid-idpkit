@@ -342,7 +342,7 @@ object OIDCController {
             } ?: throw BadRequestResponse("Unknown wallet id")
         }
         ctx.contentType(ContentType.APPLICATION_JSON).result(
-            KlaxonWithConverters.toJsonString(
+            KlaxonWithConverters().toJsonString(
                 PresentationRequestInfo(
                     state.encode(),
                     OIDCManager.getWalletRedirectionUri(session, wallet).toString()
