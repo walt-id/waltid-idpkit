@@ -38,7 +38,7 @@ val buildTask = tasks.register<YarnTask>("buildYarn") {
         println("Will set legacy openssl provider.")
         environment.set(mapOf("NODE_OPTIONS" to "--openssl-legacy-provider"))
     } else {
-        println("Will not set legacy openssl provider, current node options: " + environment.get()["NODE_OPTIONS"])
+        println("Will not set legacy openssl provider, current node options: " + environment.get()["NODE_OPTIONS"] + ", SET: ${environment.get()["SET_LEGACY_OPENSSL_PROVIDER"]}")
     }
 
     inputs.dir("components")
