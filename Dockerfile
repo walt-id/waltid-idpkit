@@ -4,9 +4,12 @@
 ARG SKIP_TESTS
 
 # --- build-env
-FROM docker.io/gradle:7.5-jdk as build-env
+FROM docker.io/gradle:7.6-jdk as build-env
 
-RUN apt-get update && apt-get install -y git nodejs npm && npm install -g yarn
+RUN apt-get update && apt-get install -y git
+RUN curl -fsSL https://deb.nodesource.com/setup_18.x | bash - &&\
+    apt-get install -y nodejs
+RUN npm install -g yarn
 
 WORKDIR /appbuild
 
