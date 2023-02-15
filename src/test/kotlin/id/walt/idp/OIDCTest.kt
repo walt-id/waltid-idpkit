@@ -113,7 +113,7 @@ class OIDCTest : OIDCTestBase() {
         val requestInfoResponse = HTTPRequest(HTTPRequest.Method.GET,
             URI.create("${IDPConfig.config.externalUrl}/api/oidc/web-api/getWalletRedirectAddress?walletId=x-device&state=${state!!}")).send()
         requestInfoResponse.indicatesSuccess() shouldBe true
-        val requestInfo = KlaxonWithConverters.parse<PresentationRequestInfo>(requestInfoResponse.content)
+        val requestInfo = KlaxonWithConverters().parse<PresentationRequestInfo>(requestInfoResponse.content)
         requestInfo shouldNotBe null
 
         // WALLET: parse SIOP request
