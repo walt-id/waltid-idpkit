@@ -39,7 +39,8 @@ object SiweManager {
             result = false
             //println("Invalid signature.")
         }
-        nonceBlacklists.add(eip4361msg.nonce)
+
+        eip4361msg.nonce?.let { nonceBlacklists.add(it) }
         return result
     }
 
