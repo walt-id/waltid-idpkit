@@ -22,7 +22,7 @@ class NFTClaims(
     override fun toJSONObject(): JSONObject {
         val o = super.toJSONObject()
         if (nft_token != null) {
-            o.put("nft_token", JSONParser(JSONParser.MODE_PERMISSIVE).parse(KlaxonWithConverters.toJsonString(nft_token)))
+            o["nft_token"] = JSONParser(JSONParser.MODE_PERMISSIVE).parse(KlaxonWithConverters().toJsonString(nft_token))
         }
         return o
     }
