@@ -9,6 +9,10 @@
         <br/>
         <button class="btn btn-success" @click="beaconTezosWallet">Connect wallet(Tezos)</button>
       </div>
+        <div class="text-center">
+            <br/>
+            <button class="btn btn-success" @click="nearWallet">Connect wallet(Near)</button>
+        </div>
     </div>
   </div>
 </template>
@@ -22,7 +26,7 @@ import { char2Bytes } from '@taquito/utils';
 import { SigningType } from '@airgap/beacon-sdk';
 import {verifySignature} from "@taquito/utils";
 
-
+import { Near, KeyPair, utils, connect, keyStores, WalletConnection, InMemorySigner } from "near-api-js";
 
 
 
@@ -125,6 +129,57 @@ Nonce: ${nonce}`
         console.log("Got error:", error);
       }
     },
+      async nearWallet(){
+
+          const keyStore = new keyStores.BrowserLocalStorageKeyStore();
+          const config = {
+              keyStore, // instance of BrowserLocalStorageKeyStore
+              networkId: 'testnet',
+              nodeUrl: 'https://rpc.testnet.near.org',
+              walletUrl: 'https://wallet.testnet.near.org',
+              helperUrl: 'https://helper.testnet.near.org',
+              explorerUrl: 'https://explorer.testnet.near.org'
+          };
+
+// inside an async function
+          const near = await connect(config)
+           const account =  await near.account("khaled_lightency1.testnet")
+
+          // walletConnection.requestSignIn({
+          //     contractId: "demo.khaled_lightency1.testnet",
+          //     methodNames: [], // optional
+          //     successUrl: "", // optional redirect URL on success
+          //     failureUrl: "" // optional redirect URL on failure
+          // });
+
+
+
+          const keyPair = await keyStore.getKey(config.networkId, account.accountId);
+          console.log("key pair",keyPair)
+          const redirect_uri = this.$route.query["redirect_uri"]
+          const session_id = this.$route.query["session"]
+          const nonce= this.$route.query["nonce"]
+
+
+
+           //  const account = walletConnection.getAccountId();
+           // const signer = new InMemorySigner(walletConnection._keyStore);
+           //  const pk = await signer.getPublicKey(account , "testnet")
+          const origin = window.location.origin;
+          const domain = window.location.host;
+          const ISO8601formatedTimestamp = new Date().toISOString();
+          const description = 'Sign in with Near to the app.';
+          const msg = Buffer.from(`${domain} wants you to sign in with your Near account: attou yji. Public Key: fammech .Date: ${ISO8601formatedTimestamp}. ${description} URI: ${origin}. Version: 1. Nonce: ${nonce}`);
+         // const message = `${domain} wants you to sign in with your Near account: ${account}. Public Key: ${pk} .Date: ${ISO8601formatedTimestamp}. ${description} URI: ${origin}. Version: 1. Nonce: ${nonce}`
+
+          const { signature } = keyPair.sign(msg);
+          const isValid = keyPair.verify(msg, signature);
+          console.log("Signature Valid?:", isValid);
+
+          const payloadBytes = '05' + '0100' + char2Bytes(bytes.length.toString()) + bytes;
+
+      }
+
   }
 }
 </script>
