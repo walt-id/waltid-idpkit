@@ -1,6 +1,6 @@
 {
-  "externalUrl": "http://localhost:8090",
-  "jsProjectExternalUrl":"http://localhost:4000",
+  "externalUrl": "http://localhost:8080",
+  "jsProjectExternalUrl":"http://localhost:3000",
   "claimConfig": {
     "vc_mappings": [
       {
@@ -63,7 +63,7 @@
       }
     ],
     "default_nft_token_claim": {
-        "chain": "GHOSTNET",
+        "chain": "TESTNET",
         "factorySmartContractAddress": "",
         "smartContractAddress": "KT1Ennr99qgqzKEUCEqypXEexH4wWzVL5a9m"
     },

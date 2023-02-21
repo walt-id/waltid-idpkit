@@ -111,7 +111,7 @@ object NFTController {
 
             }
         }
-        else if("Testnet".equals(chain)){
+        else if("TESTNET".equals(chain)){
             val publicKey = SiwnManager.getPublicKey(message)
             val address = SiwnManager.getAddress(message)
 
