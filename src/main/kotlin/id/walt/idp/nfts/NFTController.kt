@@ -5,6 +5,7 @@ import id.walt.idp.oidc.OIDCAuthorizationRole
 import id.walt.idp.oidc.OIDCManager
 import id.walt.idp.oidc.ResponseVerificationResult
 import id.walt.idp.siwe.SiweManager
+import id.walt.idp.siwe.SiwnManager
 import id.walt.idp.siwe.SiwtManager
 import id.walt.siwe.SiweRequest
 import id.walt.siwe.eip4361.Eip4361Message
@@ -108,6 +109,34 @@ object NFTController {
                     ctx.status(HttpCode.FOUND).header("Location", uri.toString())
                 }
 
+            }
+        }
+        else if("Testnet".equals(chain)){
+            val publicKey = SiwnManager.getPublicKey(message)
+            val address = SiwnManager.getAddress(message)
+
+            if (!SiwnManager.verifySignature(session!!, message, publicKey, signature)) {
+                val uri = NFTManager.generateErrorResponseObject(sessionId, address, "Invalid signature.")
+                ctx.status(HttpCode.FOUND).header("Location", uri.toString())
+            }
+            else{
+                val result = NFTManager.verifyNearNftOwnership(sessionId, address)
+                if (result.isValid && IDPConfig.config.claimConfig?.default_nft_policy!!.withPolicyVerification!!){
+                    val policyVerification = NFTManager.verifyNftMetadataAgainstPolicy(result.metadata!!)
+                    if (policyVerification) {
+                        val responseVerificationResult =
+                            ResponseVerificationResult(siopResponseVerificationResult = null, result)
+                        val uri = OIDCManager.continueIDPSessionResponse(sessionId, responseVerificationResult)
+                        ctx.status(HttpCode.FOUND).header("Location", uri.toString())
+                    } else {
+                        val uri = NFTManager.generateErrorResponseObject(sessionId, "", "Invalid policy verification.")
+                        ctx.status(HttpCode.FOUND).header("Location", uri.toString())
+                    }
+                }else{
+                    val responseVerificationResult = ResponseVerificationResult(siopResponseVerificationResult = null, result)
+                    val uri = OIDCManager.continueIDPSessionResponse(sessionId, responseVerificationResult)
+                    ctx.status(HttpCode.FOUND).header("Location", uri.toString())
+                }
             }
         }
 
