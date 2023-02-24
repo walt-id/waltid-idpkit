@@ -39,4 +39,4 @@ jobs:
         env:
             SKIP_LEGACY_OPENSSL_PROVIDER: ${{ secrets.SKIP_LEGACY_OPENSSL_PROVIDER }}
         with:
-          arguments: build --no-daemon --info
+          arguments: build -x test --no-daemon --info

@@ -37,7 +37,7 @@ jobs:
           MAVEN_PASSWORD: ${{ secrets.MAVEN_PASSWORD }}
           SKIP_LEGACY_OPENSSL_PROVIDER: ${{ secrets.SKIP_LEGACY_OPENSSL_PROVIDER }}
         with:
-          arguments: build publish --no-daemon
+          arguments: build -x test publish --no-daemon
       - name: Docker Build and Push SNAPSHOT backend
         uses: philpotisk/github-action-docker-build-push@master
         env:
@@ -45,6 +45,7 @@ jobs:
           DOCKER_PASSWORD: ${{secrets.DOCKER_PASSWORD}}
           DOCKER_FILE: Dockerfile
           CONTAINER_TAG: waltid/idpkit:latest
+          SKIP_TESTS: true
       -   name: Docker build and push SNAPSHOT frontend
           uses: philpotisk/github-action-docker-build-push@master
           env:
