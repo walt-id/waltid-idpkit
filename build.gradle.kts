@@ -64,9 +64,6 @@ dependencies {
     // NftKit
     implementation("id.walt:waltid-nftkit:1.0.0")
 
-    // Web UI
-    implementation(project(":web:waltid-idpkit-ui"))
-
     // HTTP / Client: ktor
     implementation("io.ktor:ktor-client-core:2.0.0")
     implementation("io.ktor:ktor-client-content-negotiation:2.0.0")
