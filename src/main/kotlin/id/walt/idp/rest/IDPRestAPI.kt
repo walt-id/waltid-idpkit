@@ -28,18 +28,6 @@ object IDPRestAPI {
                 path("nft", NFTController::routes)
                 path("siwe", SIWEController::routes)
             }
-        }.apply {
-            _conf.addStaticFiles {
-                it.location = Location.CLASSPATH
-                it.directory = "/app"
-                it.hostedPath = "/"
-            }
-            _conf.addSinglePageRoot("/", "/app/index.html")
-            exception(IllegalStateException::class.java) { e, ctx ->
-                log.error { "ILLEGAL STATE EXCEPTION DURING HANDLING:" }
-                e.printStackTrace()
-                ctx.json(mapOf("error" to true, "message" to e.message))
-            }
         }
     }
 

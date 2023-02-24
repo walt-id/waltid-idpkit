@@ -45,7 +45,6 @@ jobs:
           DOCKER_PASSWORD: ${{secrets.DOCKER_PASSWORD}}
           DOCKER_FILE: Dockerfile
           CONTAINER_TAG: waltid/idpkit:latest
-          SKIP_TESTS: true
       -   name: Docker build and push SNAPSHOT frontend
           uses: philpotisk/github-action-docker-build-push@master
           env:

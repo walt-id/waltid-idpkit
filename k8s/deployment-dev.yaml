@@ -172,6 +172,34 @@ spec:
           secret:
             secretName: idpkit-nft-key-config
 ---
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+    name: idpkit-web
+spec:
+    replicas: 1
+    selector:
+        matchLabels:
+            app: idpkit-web
+    template:
+        metadata:
+            labels:
+                app: idpkit-web
+            annotations:
+                deployment/id: "_DEFAULT_DEPLOYMENT_"
+        spec:
+            containers:
+                - name: idpkit-web
+                  image: waltid/idpkit-web:latest
+                  env:
+                    - name: VERIFIER_ADDRESS
+                      value: https://idp.walt-test.cloud
+                    - name: API_ADDRESS
+                      value: https://idp.walt-test.cloud
+                  ports:
+                      - containerPort: 80
+                        name: http-web
+---
 kind: Service
 apiVersion: v1
 metadata:
@@ -184,6 +212,19 @@ spec:
       protocol: TCP
   selector:
     app: idpkit
+---
+kind: Service
+apiVersion: v1
+metadata:
+    name: idpkit-web
+spec:
+    ports:
+        - name: http
+          port: 80
+          targetPort: http-web
+          protocol: TCP
+    selector:
+        app: idpkit-web
 ---
 apiVersion: networking.k8s.io/v1
 kind: Ingress
@@ -201,10 +242,17 @@ spec:
     - host: idp.walt-test.cloud
       http:
         paths:
-          - path: /
+          - path: /api
             pathType: Prefix
             backend:
               service:
                 name: idpkit
                 port:
                   number: 80
+          -   path: /
+              pathType: Prefix
+              backend:
+                  service:
+                      name: idpkit-web
+                      port:
+                          number: 80
