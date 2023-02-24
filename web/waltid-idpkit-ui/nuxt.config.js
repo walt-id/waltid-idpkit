@@ -1,7 +1,6 @@
 export default {
     // Target: https://go.nuxtjs.dev/config-target
-    //target: 'static',
-
+    target: 'static',
     ssr: false,
 
     // Global page headers: https://go.nuxtjs.dev/config-head
@@ -44,17 +43,20 @@ export default {
     build: {},
 
     generate: {
-        dir: 'dist/app'
+        dir: 'dist'
     },
 
     axios: {
         proxy: true // Can be also an object with default options
     },
 
+//    publicRuntimeConfig: {
+//        verifierAddress: process.env.VERIFIER_ADDRESS || 'http://localhost:8080/',
+//        apiAddress: process.env.API_ADDRESS || 'http://localhost:8080/'
+//    },
+
     proxy: {
-        // '/verifier-api/': 'https://wallet.waltid.org',
-        // '/api/': 'https://wallet.waltid.org'
-        '/verifier-api/': 'http://localhost:8080/',
-        '/api/': 'http://localhost:8080/'
+        '/verifier-api/': "http://localhost:8080/",
+        '/api/': "http://localhost:8080/"
     }
 }
