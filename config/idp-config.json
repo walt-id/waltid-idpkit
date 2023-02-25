@@ -65,7 +65,7 @@
     "default_nft_token_claim": {
         "chain": "TESTNET",
         "factorySmartContractAddress": "",
-        "smartContractAddress": "KT1Ennr99qgqzKEUCEqypXEexH4wWzVL5a9m"
+        "smartContractAddress": "demo.khaled_lightency1.testnet"
     },
     "default_vp_token_claim": {
       "presentation_definition": {
