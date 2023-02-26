@@ -203,85 +203,51 @@ Nonce: ${nonce}`
                           appMetadata: {
                               additionalInfo: "",
                               application: "NEAR Wallet Selector",
-                              description: "Example dApp used by NEAR Wallet Selector",
+                              description: "idpkit  used by waltid",
                               icon: "https://near.org/wp-content/uploads/2020/09/cropped-favicon-192x192.png",
                           },
                       }),
                   ],
               });
+
+              const redirect_uri = this.$route.query["redirect_uri"]
+              const session_id = this.$route.query["session"]
+              const nonce= this.$route.query["nonce"]
+              const origin = window.location.origin;
+              const domain = window.location.host;
+              const ISO8601formatedTimestamp = new Date().toISOString();
+              const description = 'Sign in with Near to the app.';
+
               const modal = setupModal(selector, {
                   title: "Select a wallet",
                   description: "Select a wallet to connect to this dApp",
               });
               modal.show();
-              const wallet = await selector.wallet("my-near-wallet");
-              //await wallet.signOut();
+
+              const wallet = await selector.wallet("welldone-wallet");
+
+
 
 
               const accounts = await wallet.getAccounts();
                 console.log("accounts",accounts[0].accountId)
-              console.log(localStorage.getItem("near-wallet-selector:selectedWalletId"))
 
-             const verif = await wallet.verifyOwner({
-                  message: "Hello World",
+
+
+              const message = `${domain} wants you to sign in with your Near account:${accounts[0].accountId} . Public Key: ${accounts[0].publicKey} .Date: ${ISO8601formatedTimestamp}. ${description} URI: ${origin}. Version: 1. Nonce: ${nonce}`;
+
+             const verify = await wallet.verifyOwner({
+                  message: message,
               });
 
-
-                console.log("verif",verif)
-//               const myKeyStore = new keyStores.InMemoryKeyStore();
-//               const PRIVATE_KEY =
-//                   "dKS78f3o3kyifKfjdPUkkWcVYa8wL48NwXgb7eLa3Nz5ocdmoZRNdDWFJkbYCNvVGkioyHkV7PBQBmPqiTweQ5W";
-// // creates a public / private key pair using the provided private key
-//               const keyPair = KeyPair.fromString(PRIVATE_KEY);
-// // adds the keyPair you created to keyStore
-//               await myKeyStore.setKey("testnet", "khaled_lighetncy1.testnet", keyPair);
-//               const connectionConfig = {
-//                   networkId: "testnet",
-//                   keyStore: myKeyStore, // first create a key store
-//                   nodeUrl: "https://rpc.testnet.near.org",
-//                   walletUrl: "https://wallet.testnet.near.org",
-//                   helperUrl: "https://helper.testnet.near.org",
-//                   explorerUrl: "https://explorer.testnet.near.org",
-//               };
-//                const nearConnection = await connect(connectionConfig);
-//             //   const walletConnection = new WalletConnection(nearConnection);
-            // if (!walletConnection.isSignedIn()) {
-            //     walletConnection.requestSignIn({
-            //         contractId: "",
-            //         methodNames: [], // optional
-            //
-            //     });
-            // }
+              const signature = verify.signature
 
 
 
+              window.location = `${redirect_uri}?session=${session_id}&chain=TESTNET&message=${message}&signature=${signature}`
 
 
-      //         const signer = new InMemorySigner(myKeyStore);
-      // signer.getPublicKey("khaled_lighetncy1.testnet","testnet").then((key) => {
-      //
-      //     console.log("key",key.toString())
-      // });
-      //
-      // const message = Buffer.from("hello");
-      //
-      //         console.log("keypair sign",keyPair.sign(message).signature)
-      //  const sign = await signer.signMessage(message,"khaled_lighetncy1.testnet","testnet");
-      //
-      //         console.log("this sign",sign.signature)
-      //
-      //
-      //   if (keyPair.verify(message,keyPair.sign(message).signature)){
-      //          const redirect_uri = this.$route.query["redirect_uri"]
-      //          const session_id = this.$route.query["session"]
-      //          const nonce= this.$route.query["nonce"]
-      //          const origin = window.location.origin;
-      //          const domain = window.location.host;
-      //          const ISO8601formatedTimestamp = new Date().toISOString();
-      //          const description = 'Sign in with Tezos to the app.';
-      //          const msg = Buffer.from(`${domain} wants you to sign in with your Near account: . Public Key: ${publicKey} .Date: ${ISO8601formatedTimestamp}. ${description} URI: ${origin}. Version: 1. Nonce: ${nonce}`);
-      //          console.log("msg",msg.toString())
-      //   }
+
 
 
           } catch (error) {
