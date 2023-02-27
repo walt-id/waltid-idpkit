@@ -43,7 +43,7 @@ export default {
     build: {},
 
     generate: {
-        dir: 'dist/app'
+        dir: 'dist'
     },
 
     axios: {
