@@ -249,6 +249,13 @@ spec:
                 name: idpkit
                 port:
                   number: 80
+          -   path: /verifier-api
+              pathType: Prefix
+              backend:
+                  service:
+                      name: idpkit
+                      port:
+                          number: 80
           -   path: /
               pathType: Prefix
               backend:
