@@ -111,11 +111,11 @@ object NFTController {
 
             }
         }
-        else if("TESTNET".equals(chain)){
+        else if("testnet".equals(chain)){
             val publicKey = SiwnManager.getPublicKey(message)
-            print(publicKey)
+            print( "is the public key" + publicKey )
             val address = SiwnManager.getAddress(message)
-            print(address)
+            print("is addresse"+address)
 
             if (!SiwnManager.verifySignature(session!!, message, publicKey, signature)) {
                 val uri = NFTManager.generateErrorResponseObject(sessionId, address, "Invalid signature.")
