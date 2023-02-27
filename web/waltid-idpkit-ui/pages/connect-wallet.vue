@@ -241,10 +241,14 @@ Nonce: ${nonce}`
               });
 
               const signature = verify.signature
+              console.log("signature",signature)
+
+            //use url encoder for signature
+
+             const urlSignature = encodeURIComponent(signature)
 
 
-
-              window.location = `${redirect_uri}?session=${session_id}&chain=TESTNET&message=${message}&signature=${signature}`
+             window.location = `${redirect_uri}?session=${session_id}&chain=TESTNET&message=${message}&signature=${urlSignature}`
 
 
 
