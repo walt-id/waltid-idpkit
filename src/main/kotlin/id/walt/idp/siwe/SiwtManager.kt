@@ -53,8 +53,9 @@ object SiwtManager {
     }
 
     fun getAddress(message:String): String{
-        val address= message.split(".").get(0).split(":").last().trim()
-        return address
+        val addressRegex = "tz\\w{34}".toRegex()
+        val addressMatch = addressRegex.find(message)!!
+        return addressMatch.value
     }
 
     fun getNonce(message: String): String{
@@ -63,7 +64,8 @@ object SiwtManager {
     }
 
     fun getPublicKey(message: String): String{
-        val nonce= message.split(".").get(1).split(":").last().trim()
-        return nonce
+        val publicKeyRegex = "edpk\\w{50}".toRegex()
+        val publicKeyMatch = publicKeyRegex.find(message)!!
+        return publicKeyMatch.value
     }
 }
