@@ -33,6 +33,9 @@ object SiwnManager {
         expectSuccess = false
     }
     fun verifySignature(session: OIDCSession, message: String, publicKey: String, signature: String): Boolean{
+        println("this is the message: $message")
+        println("this is the public key: $publicKey")
+        println("this is the signature: $signature")
 
         val nonce= getNonce(message)
         if (session.siweSession?.nonce != nonce) {
@@ -51,7 +54,7 @@ object SiwnManager {
         }
     }
     fun getAddress(message:String): String{
-        val address= message.split(".").get(0).split(":").last().trim()
+        val address= message.split(" .").get(0).split(":").last().trim()
         return address
     }
 
@@ -61,8 +64,10 @@ object SiwnManager {
     }
 
     fun getPublicKey(message: String): String{
-        val nonce= message.split(".").get(1).split(":").last().trim()
-        return nonce
+        val publicKeyPrefix = "Public Key: ed25519:"
+        val startIndex = message.indexOf(publicKeyPrefix) + publicKeyPrefix.length
+        val endIndex = message.indexOf(".", startIndex)
+        return message.substring(startIndex, endIndex)
     }
 
 

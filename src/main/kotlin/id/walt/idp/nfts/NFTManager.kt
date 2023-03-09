@@ -125,7 +125,13 @@ object NFTManager {
     }
     private fun nearNftCollectionOwnershipVerification(sessionId: String, account: String): Boolean {
         val session = OIDCManager.getOIDCSession(sessionId)
-        val result = VerificationService.verifyNftOwnershipWithinCollection(session?.nftTokenClaim?.chain!!,
+        println("chain: "+session?.nftTokenClaim?.chain!!)
+        val chain = session?.nftTokenClaim?.chain!!
+        println("chain lowwer: "+ chain)
+
+        println("contract: "+session.nftTokenClaim.smartContractAddress!!)
+        println("account: "+account)
+        val result = VerificationService.verifyNftOwnershipWithinCollection(chain,
             session.nftTokenClaim.smartContractAddress!!,account)
         return result
     }

@@ -39,6 +39,7 @@ object NFTController {
         }
 
     fun nftVerification(ctx: Context) {
+        val test = "TESTNET";
 
         val sessionId = ctx.queryParam("session") ?: throw BadRequestResponse("Session not specified")
         val message = ctx.queryParam("message") ?: throw BadRequestResponse("Message not specified")
@@ -111,7 +112,7 @@ object NFTController {
 
             }
         }
-        else if("testnet".equals(chain)){
+        else if("TESTNET".equals(chain)){
             val publicKey = SiwnManager.getPublicKey(message)
             print( "is the public key" + publicKey )
             val address = SiwnManager.getAddress(message)
