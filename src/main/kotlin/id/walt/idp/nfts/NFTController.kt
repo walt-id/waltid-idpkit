@@ -5,6 +5,7 @@ import id.walt.idp.oidc.OIDCAuthorizationRole
 import id.walt.idp.oidc.OIDCManager
 import id.walt.idp.oidc.ResponseVerificationResult
 import id.walt.idp.siwe.SiweManager
+import id.walt.idp.siwe.SiwnManager
 import id.walt.idp.siwe.SiwtManager
 import id.walt.siwe.SiweRequest
 import id.walt.siwe.eip4361.Eip4361Message
@@ -38,6 +39,7 @@ object NFTController {
         }
 
     fun nftVerification(ctx: Context) {
+        val test = "TESTNET";
 
         val sessionId = ctx.queryParam("session") ?: throw BadRequestResponse("Session not specified")
         val message = ctx.queryParam("message") ?: throw BadRequestResponse("Message not specified")
@@ -108,6 +110,36 @@ object NFTController {
                     ctx.status(HttpCode.FOUND).header("Location", uri.toString())
                 }
 
+            }
+        }
+        else if("TESTNET".equals(chain)){
+            val publicKey = SiwnManager.getPublicKey(message)
+            print( "is the public key" + publicKey )
+            val address = SiwnManager.getAddress(message)
+            print("is addresse"+address)
+
+            if (!SiwnManager.verifySignature(session!!, message, publicKey, signature)) {
+                val uri = NFTManager.generateErrorResponseObject(sessionId, address, "Invalid signature.")
+                ctx.status(HttpCode.FOUND).header("Location", uri.toString())
+            }
+            else{
+                val result = NFTManager.verifyNearNftOwnership(sessionId, address)
+                if (result.isValid && IDPConfig.config.claimConfig?.default_nft_policy!!.withPolicyVerification!!){
+                    val policyVerification = NFTManager.verifyNftMetadataAgainstPolicy(result.metadata!!)
+                    if (policyVerification) {
+                        val responseVerificationResult =
+                            ResponseVerificationResult(siopResponseVerificationResult = null, result)
+                        val uri = OIDCManager.continueIDPSessionResponse(sessionId, responseVerificationResult)
+                        ctx.status(HttpCode.FOUND).header("Location", uri.toString())
+                    } else {
+                        val uri = NFTManager.generateErrorResponseObject(sessionId, "", "Invalid policy verification.")
+                        ctx.status(HttpCode.FOUND).header("Location", uri.toString())
+                    }
+                }else{
+                    val responseVerificationResult = ResponseVerificationResult(siopResponseVerificationResult = null, result)
+                    val uri = OIDCManager.continueIDPSessionResponse(sessionId, responseVerificationResult)
+                    ctx.status(HttpCode.FOUND).header("Location", uri.toString())
+                }
             }
         }
 
