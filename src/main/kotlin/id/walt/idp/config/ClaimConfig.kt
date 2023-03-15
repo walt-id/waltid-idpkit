@@ -3,7 +3,10 @@ package id.walt.idp.config
 import com.jayway.jsonpath.JsonPath
 import com.nimbusds.jwt.JWTClaimsSet
 import com.nimbusds.oauth2.sdk.Scope
+import id.walt.idp.nfts.ChainEcosystem
+import id.walt.idp.nfts.NFTManager
 import id.walt.idp.nfts.NftTokenClaim
+import id.walt.idp.nfts.NftTokenConstraint
 import id.walt.idp.oidc.OIDCManager
 import id.walt.idp.oidc.ResponseVerificationResult
 import id.walt.model.oidc.VpTokenClaim
@@ -36,19 +39,28 @@ class VCClaimMapping(
         get() = OIDCManager.AuthorizationMode.SIOP
 }
 
+data class NFTClaimMappingDefinition(
+    val nftTokenConstraint: NftTokenConstraint,
+    val trait: String
+)
+
 class NFTClaimMapping(
     scope: Set<String>,
     claim: String,
-    val chain: String,
-    val smartContractAddress: String,
-    val factorySmartContractAddress: String,
-    val trait: String
+    val claimMappings: Map<String, NFTClaimMappingDefinition>
 ) : ClaimMapping(scope, claim) {
     override fun fillClaims(verificationResult: ResponseVerificationResult, claimBuilder: JWTClaimsSet.Builder) {
-        val attribute =
-            verificationResult.nftresponseVerificationResult?.metadata?.evmNftMetadata?.attributes?.firstOrNull { a -> a.trait_type == trait }
-                ?: throw BadRequestResponse("Requested nft metadata trait not found in verification response")
-        claimBuilder.claim(trait, attribute.value)
+      val mappingDefinition = verificationResult.nftresponseVerificationResult?.ecosystem?.let {
+        claimMappings[it.name]
+      } ?: throw BadRequestResponse("No mapping definition found for the given ecosystem")
+
+      val claimValue = when(verificationResult.nftresponseVerificationResult?.ecosystem) {
+        ChainEcosystem.EVM -> verificationResult.nftresponseVerificationResult?.metadata?.evmNftMetadata?.attributes?.firstOrNull { a -> a.trait_type == mappingDefinition.trait }?.value
+        ChainEcosystem.TEZOS -> verificationResult.nftresponseVerificationResult?.metadata?.tezosNftMetadata?.attributes?.firstOrNull { a -> a.name == mappingDefinition.trait }?.value
+        ChainEcosystem.NEAR -> verificationResult.nftresponseVerificationResult?.metadata?.nearNftMetadata?.metadata?.let { NFTManager.getNearNftAttributeValue(it, mappingDefinition.trait) }
+      }?: throw BadRequestResponse("Requested nft metadata trait not found in verification response")
+
+      claimBuilder.claim(mappingDefinition.trait, claimValue)
     }
 
     override val authorizationMode: OIDCManager.AuthorizationMode

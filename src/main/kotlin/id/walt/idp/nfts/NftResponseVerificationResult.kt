@@ -4,6 +4,7 @@ import id.walt.nftkit.services.NftMetadata
 import id.walt.nftkit.services.NftMetadataWrapper
 
 class NftResponseVerificationResult(
+    val ecosystem: ChainEcosystem,
     val account: String,
     val sessionId: String,
     val valid: Boolean = false,

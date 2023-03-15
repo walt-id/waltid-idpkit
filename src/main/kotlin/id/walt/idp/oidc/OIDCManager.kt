@@ -31,8 +31,10 @@ import id.walt.idp.config.NFTClaimMapping
 import id.walt.idp.config.NFTConfig
 import id.walt.idp.context.ContextFactory
 import id.walt.idp.context.ContextId
+import id.walt.idp.nfts.ChainEcosystem
 import id.walt.idp.nfts.NFTManager
 import id.walt.idp.nfts.NftTokenClaim
+import id.walt.idp.nfts.NftTokenConstraint
 import id.walt.idp.siop.SIOPState
 import id.walt.idp.siwe.SiweManager
 import id.walt.idp.util.WaltIdAlgorithm
@@ -210,8 +212,10 @@ object OIDCManager : IDPManager {
                 IDPConfig.config.claimConfig?.mappingsForScope(s)?.filterIsInstance<NFTClaimMapping>()
                     ?: listOf()
             }
-                .map { m -> NftTokenClaim(Chain.valueOf(m.chain), m.smartContractAddress, m.factorySmartContractAddress) }
-                .distinctBy { c -> "${c.chain}@${c.smartContractAddress}" }
+                .map { m -> NftTokenClaim(
+                  ecosystems = m.claimMappings.keys.map { ChainEcosystem.valueOf(it) }.toSet(),
+                  nftTokenContraints = m.claimMappings.mapValues { entry -> entry.value.nftTokenConstraint }
+                ) }
             if (nftClaimFromMappings.size > 1) {
                 throw BadRequestResponse("Ambiguous NFT authorization request")
             }

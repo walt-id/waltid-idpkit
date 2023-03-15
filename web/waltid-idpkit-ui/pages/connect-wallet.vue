@@ -98,7 +98,7 @@ Nonce: ${nonce}`
         return false
       }
         // callback to IDP Kit with ethereum address
-        window.location = `${redirect_uri}?session=${session_id}&chain=EVM&message=${encodeURIComponent(eip4361msg)}&signature=${msgSignature}`
+        window.location = `${redirect_uri}?session=${session_id}&ecosystem=EVM&message=${encodeURIComponent(eip4361msg)}&signature=${msgSignature}`
       } catch (e) {
         console.log(e.response.data)
         this.error = true
@@ -133,7 +133,7 @@ Nonce: ${nonce}`
         const signedPayload = await wallet.client.requestSignPayload(payload);
         // The signature
         const { signature } = signedPayload;
-        window.location = `${redirect_uri}?session=${session_id}&chain=Tezos&message=${message}&signature=${signature}`
+        window.location = `${redirect_uri}?session=${session_id}&ecosystem=Tezos&message=${message}&signature=${signature}`
       } catch (error) {
         console.log("Got error:", error);
       }
@@ -216,7 +216,7 @@ Nonce: ${nonce}`
              const urlSignature = encodeURIComponent(signature)
 
 
-             window.location = `${redirect_uri}?session=${session_id}&chain=TESTNET&message=${message}&signature=${urlSignature}`
+             window.location = `${redirect_uri}?session=${session_id}&ecosystem=NEAR&message=${message}&signature=${urlSignature}`
 
 
 
