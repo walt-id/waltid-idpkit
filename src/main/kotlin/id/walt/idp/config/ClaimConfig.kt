@@ -54,10 +54,10 @@ class NFTClaimMapping(
         claimMappings[it.name]
       } ?: throw BadRequestResponse("No mapping definition found for the given ecosystem")
 
-      val claimValue = when(verificationResult.nftresponseVerificationResult?.ecosystem) {
-        ChainEcosystem.EVM -> verificationResult.nftresponseVerificationResult?.metadata?.evmNftMetadata?.attributes?.firstOrNull { a -> a.trait_type == mappingDefinition.trait }?.value
-        ChainEcosystem.TEZOS -> verificationResult.nftresponseVerificationResult?.metadata?.tezosNftMetadata?.attributes?.firstOrNull { a -> a.name == mappingDefinition.trait }?.value
-        ChainEcosystem.NEAR -> verificationResult.nftresponseVerificationResult?.metadata?.nearNftMetadata?.metadata?.let { NFTManager.getNearNftAttributeValue(it, mappingDefinition.trait) }
+      val claimValue = when(verificationResult.nftresponseVerificationResult.ecosystem) {
+        ChainEcosystem.EVM -> verificationResult.nftresponseVerificationResult.metadata?.evmNftMetadata?.attributes?.firstOrNull { a -> a.trait_type == mappingDefinition.trait }?.value
+        ChainEcosystem.TEZOS -> verificationResult.nftresponseVerificationResult.metadata?.tezosNftMetadata?.attributes?.firstOrNull { a -> a.name == mappingDefinition.trait }?.value
+        ChainEcosystem.NEAR -> verificationResult.nftresponseVerificationResult.metadata?.nearNftMetadata?.metadata?.let { NFTManager.getNearNftAttributeValue(it, mappingDefinition.trait) }
       }?: throw BadRequestResponse("Requested nft metadata trait not found in verification response")
 
       claimBuilder.claim(mappingDefinition.trait, claimValue)
