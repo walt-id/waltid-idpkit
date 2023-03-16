@@ -72,14 +72,14 @@
         "ecosystems": [ "EVM", "TEZOS", "NEAR" ],
         "nftTokenContraints": {
           "EVM": {
-            "chain": "TESTNET",
+            "chain": "POLYGON",
             "factorySmartContractAddress": "",
-            "smartContractAddress": "demo.khaled_lightency1.testnet"
+            "smartContractAddress": "0x21dd9b1913d84ab295fdf19834b0b6824a5912ca"
           },
           "TEZOS": {
-            "chain": "TESTNET",
+            "chain": "GHOSTNET",
             "factorySmartContractAddress": "",
-            "smartContractAddress": "demo.khaled_lightency1.testnet"
+            "smartContractAddress": "KT1Rc59ukgW32e54aUdYqVzTM9gtHrA4JDYp"
           },
           "NEAR": {
             "chain": "TESTNET",

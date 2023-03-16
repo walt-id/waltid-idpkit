@@ -44,7 +44,7 @@ object NFTController {
         val sessionId = ctx.queryParam("session") ?: throw BadRequestResponse("Session not specified")
         val message = ctx.queryParam("message") ?: throw BadRequestResponse("Message not specified")
         val signature = ctx.queryParam("signature") ?: throw BadRequestResponse("Signature not specified")
-        val ecosystem = ctx.queryParam("ecosystem")?.let { ChainEcosystem.valueOf(it) } ?: throw BadRequestResponse("Ecosystem not specified")
+        val ecosystem = ctx.queryParam("ecosystem")?.let { ChainEcosystem.valueOf(it.toUpperCase()) } ?: throw BadRequestResponse("Ecosystem not specified")
 
 
         val session = OIDCManager.getOIDCSession(sessionId)
