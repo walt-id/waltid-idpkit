@@ -10,61 +10,29 @@ import id.walt.idp.oidc.ResponseVerificationResult
 import id.walt.nftkit.opa.DynamicPolicy
 import id.walt.nftkit.services.*
 import id.walt.nftkit.utilis.Common
+import mu.KotlinLogging
 import java.math.BigInteger
 import java.net.URI
-import io.ktor.client.*
-import io.ktor.client.call.*
-import io.ktor.client.engine.cio.*
-import io.ktor.client.plugins.contentnegotiation.*
-import io.ktor.serialization.kotlinx.json.*
-import kotlinx.serialization.json.Json
-import io.ktor.client.plugins.logging.*
-import io.ktor.client.request.*
-import kotlinx.coroutines.runBlocking
-import kotlinx.serialization.Serializable
-import java.net.URLEncoder
-import java.nio.charset.StandardCharsets
 
 object NFTManager {
 
     private const val NFT_API_PATH: String = "api/nft"
     val NFTApiUrl: String get() = "${IDPConfig.config.externalUrl}/$NFT_API_PATH"
+    val logger = KotlinLogging.logger {  }
 
-    fun verifyNftOwnershipResponse(sessionId: String, account: String): NftResponseVerificationResult {
-        val result = nftCollectionOwnershipVerification(sessionId, account)
+    fun verifyNftOwnershipResponse(sessionId: String, account: String, ecosystem: ChainEcosystem): NftResponseVerificationResult {
+        val result = nftCollectionOwnershipVerification(sessionId, account, ecosystem)
         val error = if (result) null else "Invalid Ownership"
         var nft: NftMetadataWrapper? = null
 
         if (result) {
-            nft = NftMetadataWrapper(getAccountNftMetadata(sessionId, account), null)
+            nft = getAccountNftMetadata(sessionId, account, ecosystem)
         }
-        val nftResponseVerificationResult = NftResponseVerificationResult(account, sessionId, result, nft, error = error)
+
+        val nftResponseVerificationResult = NftResponseVerificationResult(ecosystem, account, sessionId, result, nft, error = error)
         return nftResponseVerificationResult
     }
 
-    fun verifyTezosNftOwnership(sessionId: String, account: String): NftResponseVerificationResult {
-        val result= tezosNftCollectionOwnershipVerification(sessionId, account)
-        val error = if (result) null else "Invalid Ownership"
-        var nft: NftMetadataWrapper? = null
-
-        if (result) {
-            nft = NftMetadataWrapper(null, getAccountTezosNftMetadata(sessionId, account))
-        }
-        val nftResponseVerificationResult = NftResponseVerificationResult(account, sessionId, result, nft, error = error)
-        return nftResponseVerificationResult
-    }
-    fun verifyNearNftOwnership(sessionId: String, account: String): NftResponseVerificationResult {
-        val result= nearNftCollectionOwnershipVerification(sessionId, account)
-        val error = if (result) null else "Invalid Ownership"
-        var nft: NftMetadataWrapper? = null
-
-        if (result) {
-            nft = NftMetadataWrapper(null,null , getAccountNearNftMetadata(sessionId, account))
-        }
-        val nftResponseVerificationResult = NftResponseVerificationResult(account, sessionId, result, nft, error = error)
-
-        return nftResponseVerificationResult
-    }
     fun getNFTClaims(authRequest: AuthorizationRequest): NFTClaims {
         val claims =
             (authRequest.requestObject?.jwtClaimsSet?.claims?.get("claims")?.toString()
@@ -84,8 +52,8 @@ object NFTManager {
         return getNFTClaims(authRequest)
     }
 
-    fun generateErrorResponseObject(sessionId: String, address: String, errorMessage: String): URI {
-        val nftResponseVerificationResult = NftResponseVerificationResult(address, sessionId, false, error = errorMessage)
+    fun generateErrorResponseObject(sessionId: String, address: String, errorMessage: String, ecosystem: ChainEcosystem): URI {
+        val nftResponseVerificationResult = NftResponseVerificationResult(ecosystem, address, sessionId, false, error = errorMessage)
         val responseVerificationResult = ResponseVerificationResult(null, nftResponseVerificationResult, null)
         val uri = OIDCManager.continueIDPSessionResponse(sessionId, responseVerificationResult)
         return uri
@@ -100,68 +68,72 @@ object NFTManager {
         )
     }
 
-    private fun nftCollectionOwnershipVerification(sessionId: String, account: String): Boolean {
-        val session = OIDCManager.getOIDCSession(sessionId)
-        if(session?.nftTokenClaim?.factorySmartContractAddress.equals("") || session?.nftTokenClaim?.factorySmartContractAddress == null ) {
-            val balance = NftService.balanceOf(
-                Common.getEVMChain(session?.nftTokenClaim?.chain!!.toString()),
-                session.nftTokenClaim.smartContractAddress!!, account.trim()
+    private fun nftCollectionOwnershipVerification(sessionId: String, account: String, ecosystem: ChainEcosystem): Boolean {
+        val session = OIDCManager.getOIDCSession(sessionId) ?: return false.also { logger.error { "Session not found" } }
+        val tokenConstraint = session.nftTokenClaim?.nftTokenContraints?.get(ecosystem.name)
+          ?: return false.also { logger.error { "No nft token constraint found for given ecosystem" } }
+        return if(tokenConstraint.factorySmartContractAddress.isNullOrEmpty()) {
+          logger.info { "Verifying collection ownership on $ecosystem, for account: $account, chain: ${tokenConstraint.chain}, contract: ${tokenConstraint.smartContractAddress}" }
+          when(ecosystem) {
+            ChainEcosystem.EVM -> NftService.balanceOf(
+                Common.getEVMChain(tokenConstraint.chain!!.toString()),
+                tokenConstraint.smartContractAddress!!, account.trim()
+              )?.compareTo(BigInteger("0")) == 1
+            ChainEcosystem.TEZOS, ChainEcosystem.NEAR -> VerificationService.verifyNftOwnershipWithinCollection(
+              tokenConstraint.chain!!,
+              tokenConstraint.smartContractAddress!!,account)
+          }
+        } else {
+          println("data nft verification")
+          when(ecosystem) {
+            ChainEcosystem.EVM -> VerificationService.dataNftVerification(
+              Common.getEVMChain(tokenConstraint.chain!!.toString()),
+              tokenConstraint.factorySmartContractAddress!!,
+              tokenConstraint.smartContractAddress!!, account.trim(), "", null
             )
-            return balance!!.compareTo(BigInteger("0")) == 1
-        }else{
-            println("data nft verification")
-            return VerificationService.dataNftVerification(Common.getEVMChain(session.nftTokenClaim.chain!!.toString()),
-                session.nftTokenClaim.factorySmartContractAddress,
-                    session.nftTokenClaim.smartContractAddress!!, account.trim(), "", null)
+            else -> false.also {
+              logger.error { "Data NFT verification not supported for $ecosystem ecosystem" }
+            }
+          }
         }
     }
 
-    private fun tezosNftCollectionOwnershipVerification(sessionId: String, account: String): Boolean {
-        val session = OIDCManager.getOIDCSession(sessionId)
-        val result = VerificationService.verifyNftOwnershipWithinCollection(session?.nftTokenClaim?.chain!!,
-            session.nftTokenClaim.smartContractAddress!!,account)
-            return result
-
-    }
-    private fun nearNftCollectionOwnershipVerification(sessionId: String, account: String): Boolean {
-        val session = OIDCManager.getOIDCSession(sessionId)
-        println("chain: "+session?.nftTokenClaim?.chain!!)
-        val chain = session?.nftTokenClaim?.chain!!
-        println("chain lowwer: "+ chain)
-
-        println("contract: "+session.nftTokenClaim.smartContractAddress!!)
-        println("account: "+account)
-        val result = VerificationService.verifyNftOwnershipWithinCollection(chain,
-            session.nftTokenClaim.smartContractAddress!!,account)
-        return result
-    }
-
-    private fun getAccountNftMetadata(sessionId: String, account: String): NftMetadata {
-        val session = OIDCManager.getOIDCSession(sessionId)
-        val nfts = NftService.getAccountNFTsByAlchemy(session?.nftTokenClaim?.chain!!, account)
-            .filter { it.contract.address.equals(session.nftTokenClaim.smartContractAddress, ignoreCase = true) }
-            .sortedBy { it.id.tokenId }
-        return nfts.get(0).metadata!!
+    private fun getAccountNftMetadata(sessionId: String, account: String, ecosystem: ChainEcosystem): NftMetadataWrapper {
+        val session = OIDCManager.getOIDCSession(sessionId) ?: return NftMetadataWrapper().also { logger.error { "Session not found" } }
+        val tokenConstraint = session.nftTokenClaim?.nftTokenContraints?.get(ecosystem.name)
+          ?: return NftMetadataWrapper().also { logger.error { "No nft token constraint found for given ecosystem" } }
+        return NftMetadataWrapper(
+          evmNftMetadata = if(ecosystem == ChainEcosystem.EVM)
+            NftService.getAccountNFTsByAlchemy(tokenConstraint.chain!!, account)
+              .filter { it.contract.address.equals(tokenConstraint.smartContractAddress, ignoreCase = true) }
+              .sortedBy { it.id.tokenId }.get(0).metadata!!
+            else null,
+          tezosNftMetadata = if(ecosystem == ChainEcosystem.TEZOS)
+            TezosNftService.fetchAccountNFTsByTzkt(tokenConstraint.chain!!, account, tokenConstraint.smartContractAddress)
+              .sortedBy { it.id }.get(0).token.metadata
+            else null,
+          nearNftMetadata = if(ecosystem == ChainEcosystem.NEAR)
+            tokenConstraint.smartContractAddress?.let {
+              NearNftService.getNFTforAccount( account, it, NearChain.valueOf(
+                tokenConstraint.chain!!.toString()
+              ))}?.get(0)
+            else null
+        )
     }
 
-    private fun getAccountTezosNftMetadata(sessionId: String, account: String): TezosNftMetadata? {
-        val session = OIDCManager.getOIDCSession(sessionId)
-        val nfts= TezosNftService.fetchAccountNFTsByTzkt(session?.nftTokenClaim?.chain!!, account, session.nftTokenClaim.smartContractAddress)
-            .sortedBy { it.id }
-        return nfts.get(0).token.metadata
-    }
-
-    private fun getAccountNearNftMetadata(sessionId: String, account: String): NearNftMetadata? {
-        val session = OIDCManager.getOIDCSession(sessionId)
-        val nfts= session!!.nftTokenClaim!!.smartContractAddress?.let {
-            NearNftService.getNFTforAccount( account, it,NearChain.valueOf(
-                session.nftTokenClaim?.chain!!.toString()
-            ))
-        }
-        if (nfts != null) {
-            return nfts.get(0)
-        }
-        return null
-    }
-
+  public fun getNearNftAttributeValue(metadata: NearTokenMetadata, key: String): String? = when(key) {
+    "copies" -> metadata.copies?.toString()
+    "description" -> metadata.description
+    "expires_at" -> metadata.expires_at
+    "extra" -> metadata.extra
+    "issued_at" -> metadata.issued_at
+    "media" -> metadata.media
+    "media_hash" -> metadata.media_hash
+    "reference" -> metadata.reference
+    "reference_hash" -> metadata.reference_hash
+    "starts_at" -> metadata.starts_at
+    "title" -> metadata.title
+    "updated_at" -> metadata.updated_at
+    else -> null
+  }
 }

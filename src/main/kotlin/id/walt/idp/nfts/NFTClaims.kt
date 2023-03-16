@@ -7,13 +7,22 @@ import id.walt.nftkit.services.Chain
 import net.minidev.json.JSONObject
 import net.minidev.json.parser.JSONParser
 
-data class NftTokenClaim(
+data class NftTokenConstraint(
     @Json(serializeNull = false)
     val chain: Chain?,
     @Json(serializeNull = false)
     val smartContractAddress: String?,
     @Json(serializeNull = false)
     val factorySmartContractAddress: String?,
+)
+
+enum class ChainEcosystem {
+    EVM, TEZOS, NEAR
+}
+
+data class NftTokenClaim(
+    val ecosystems: Set<ChainEcosystem>,
+    val nftTokenContraints: Map<String, NftTokenConstraint>
 )
 
 class NFTClaims(

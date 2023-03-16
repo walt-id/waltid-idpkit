@@ -56,16 +56,37 @@
       {
         "scope": [ "award" ],
         "claim": "awd",
-        "chain": "POLYGON",
-        "smartContractAddress": "0x9bc4d80c7b77ecc7107eac3961cb1dd98930f2b2",
-          "factorySmartContractAddress": "",
-        "trait": "award"
+        "claimMappings": {
+          "EVM": {
+            "nftTokenConstraint": {
+              "chain": "POLYGON",
+              "smartContractAddress": "0x9bc4d80c7b77ecc7107eac3961cb1dd98930f2b2",
+              "factorySmartContractAddress": ""
+            },
+            "trait": "award"
+          }
+        }
       }
     ],
     "default_nft_token_claim": {
-        "chain": "TESTNET",
-        "factorySmartContractAddress": "",
-        "smartContractAddress": "demo.khaled_lightency1.testnet"
+        "ecosystems": [ "EVM", "TEZOS", "NEAR" ],
+        "nftTokenContraints": {
+          "EVM": {
+            "chain": "POLYGON",
+            "factorySmartContractAddress": "",
+            "smartContractAddress": "0x21dd9b1913d84ab295fdf19834b0b6824a5912ca"
+          },
+          "TEZOS": {
+            "chain": "GHOSTNET",
+            "factorySmartContractAddress": "",
+            "smartContractAddress": "KT1Rc59ukgW32e54aUdYqVzTM9gtHrA4JDYp"
+          },
+          "NEAR": {
+            "chain": "TESTNET",
+            "factorySmartContractAddress": "",
+            "smartContractAddress": "demo.khaled_lightency1.testnet"
+          }
+        }
     },
     "default_vp_token_claim": {
       "presentation_definition": {
