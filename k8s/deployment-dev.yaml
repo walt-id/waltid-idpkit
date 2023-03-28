@@ -81,14 +81,20 @@ data:
           }
         ],
         "nft_mappings":  [
-        {
-          "scope": [ "award" ],
-          "claim": "awd",
-          "chain": "GHOSTNET",
-          "smartContractAddress": "KT1Rc59ukgW32e54aUdYqVzTM9gtHrA4JDYp",
-            "factorySmartContractAddress": "",
-          "trait": "award"
-        }
+          {
+            "scope": [ "award" ],
+            "claim": "awd",
+            "claimMappings": {
+              "EVM": {
+                "nftTokenConstraint": {
+                  "chain": "POLYGON",
+                  "smartContractAddress": "0x9bc4d80c7b77ecc7107eac3961cb1dd98930f2b2",
+                  "factorySmartContractAddress": ""
+                },
+                "trait": "award"
+              }
+            }
+          }
         ],
         "default_nft_token_claim": {
           "ecosystems": [ "EVM", "TEZOS", "NEAR" ],
