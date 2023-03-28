@@ -91,9 +91,24 @@ data:
         }
         ],
         "default_nft_token_claim": {
-          "chain": "GHOSTNET",
-          "factorySmartContractAddress": "",
-          "smartContractAddress": "KT1Rc59ukgW32e54aUdYqVzTM9gtHrA4JDYp"
+          "ecosystems": [ "EVM", "TEZOS", "NEAR" ],
+          "nftTokenContraints": {
+            "EVM": {
+              "chain": "POLYGON",
+              "factorySmartContractAddress": "",
+              "smartContractAddress": "0x21dd9b1913d84ab295fdf19834b0b6824a5912ca"
+            },
+            "TEZOS": {
+              "chain": "GHOSTNET",
+              "factorySmartContractAddress": "",
+              "smartContractAddress": "KT1Rc59ukgW32e54aUdYqVzTM9gtHrA4JDYp"
+            },
+            "NEAR": {
+              "chain": "TESTNET",
+              "factorySmartContractAddress": "",
+              "smartContractAddress": "demo.khaled_lightency1.testnet"
+            }
+          }
         },
         "default_nft_policy":{
           "withPolicyVerification": false,
