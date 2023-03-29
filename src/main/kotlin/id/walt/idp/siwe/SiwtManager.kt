@@ -65,7 +65,17 @@ object SiwtManager {
 
     fun getPublicKey(message: String): String{
         val publicKeyRegex = "edpk\\w{50}".toRegex()
-        val publicKeyMatch = publicKeyRegex.find(message)!!
+        val publicKeyMatch = publicKeyRegex.find(message)
+          if(publicKeyMatch?.value == null){
+            val publicKeyRegex1 = "sppk\\w{51}".toRegex()
+            val publicKeyMatch1 = publicKeyRegex1.find(message)
+            if(publicKeyMatch1?.value == null){
+              val publicKeyRegex2 = "p2pk\\w{51}".toRegex()
+              val publicKeyMatch2 = publicKeyRegex2.find(message)!!
+              return publicKeyMatch2.value
+            }
+            return publicKeyMatch1.value
+          }
         return publicKeyMatch.value
     }
 }
