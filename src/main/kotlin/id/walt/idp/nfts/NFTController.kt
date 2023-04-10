@@ -6,6 +6,7 @@ import id.walt.idp.oidc.OIDCManager
 import id.walt.idp.oidc.ResponseVerificationResult
 import id.walt.idp.siwe.SiweManager
 import id.walt.idp.siwe.SiwnManager
+import id.walt.idp.siwe.SiwpManager
 import id.walt.idp.siwe.SiwtManager
 import id.walt.siwe.SiweRequest
 import id.walt.siwe.eip4361.Eip4361Message
@@ -77,6 +78,14 @@ object NFTController {
             print("is address " + address)
             SiwnManager.verifySignature(session!!, message, publicKey, signature)
           }
+          ChainEcosystem.POLKADOT -> {
+            val publicKey = SiwpManager.getPublicKey(message)
+            print( "is the public key" + publicKey )
+            address = SiwpManager.getAddress(message)
+            print("is address " + address)
+            SiwpManager.verifySignature(session!!, message, publicKey, signature)
+          }
+
         }
 
         if(!siwxResult) {
