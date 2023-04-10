@@ -79,7 +79,7 @@ object NFTManager {
                 Common.getEVMChain(tokenConstraint.chain!!.toString()),
                 tokenConstraint.smartContractAddress!!, account.trim()
               )?.compareTo(BigInteger("0")) == 1
-            ChainEcosystem.TEZOS, ChainEcosystem.NEAR -> VerificationService.verifyNftOwnershipWithinCollection(
+            ChainEcosystem.TEZOS, ChainEcosystem.NEAR  , ChainEcosystem.POLKADOT-> VerificationService.verifyNftOwnershipWithinCollection(
               tokenConstraint.chain!!,
               tokenConstraint.smartContractAddress!!,account)
           }
@@ -117,7 +117,8 @@ object NFTManager {
               NearNftService.getNFTforAccount( account, it, NearChain.valueOf(
                 tokenConstraint.chain!!.toString()
               ))}?.get(0)
-            else null
+            else null,
+
         )
     }
 
