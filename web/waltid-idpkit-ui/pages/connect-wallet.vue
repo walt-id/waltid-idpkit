@@ -9,6 +9,10 @@
         <br/>
         <button class="btn btn-success" @click="beaconTezosWallet">Connect wallet(Tezos)</button>
       </div>
+        <div class="text-center">
+            <br/>
+            <button class="btn btn-success" @click="nearWallet">Connect wallet(Near)</button>
+        </div>
     </div>
   </div>
 </template>
@@ -19,10 +23,19 @@ import WalletConnectProvider from "@walletconnect/web3-provider";
 import {ethers} from 'ethers';
 import { BeaconWallet } from "@taquito/beacon-wallet";
 import { char2Bytes } from '@taquito/utils';
-import { SigningType } from '@airgap/beacon-sdk';
+import {SigningType, signMessage} from '@airgap/beacon-sdk';
 import {verifySignature} from "@taquito/utils";
+import { setupWalletSelector } from "@near-wallet-selector/core";
+import { setupModal } from "@near-wallet-selector/modal-ui";
+
+import { setupWelldoneWallet } from "@near-wallet-selector/welldone-wallet";
+
+import { setupDefaultWallets } from "@near-wallet-selector/default-wallets";
 
 
+
+import {Near, KeyPair, utils, connect, keyStores, WalletConnection, InMemorySigner, Signer} from "near-api-js";
+import * as buffer from "buffer";
 
 
 
@@ -85,7 +98,7 @@ Nonce: ${nonce}`
         return false
       }
         // callback to IDP Kit with ethereum address
-        window.location = `${redirect_uri}?session=${session_id}&chain=EVM&message=${encodeURIComponent(eip4361msg)}&signature=${msgSignature}`
+        window.location = `${redirect_uri}?session=${session_id}&ecosystem=EVM&message=${encodeURIComponent(eip4361msg)}&signature=${msgSignature}`
       } catch (e) {
         console.log(e.response.data)
         this.error = true
@@ -120,11 +133,101 @@ Nonce: ${nonce}`
         const signedPayload = await wallet.client.requestSignPayload(payload);
         // The signature
         const { signature } = signedPayload;
-        window.location = `${redirect_uri}?session=${session_id}&chain=Tezos&message=${message}&signature=${signature}`
+        window.location = `${redirect_uri}?session=${session_id}&ecosystem=Tezos&message=${message}&signature=${signature}`
       } catch (error) {
         console.log("Got error:", error);
       }
     },
+      async nearWallet(){
+       //   const myKeyStore = new keyStores.InMemoryKeyStore();
+       //    const PRIVATE_KEY =
+       //        "dKS78f3o3kyifKfjdPUkkWcVYa8wL48NwXgb7eLa3Nz5ocdmoZRNdDWFJkbYCNvVGkioyHkV7PBQBmPqiTweQ5W";
+       //    const keyPair = KeyPair.fromString(PRIVATE_KEY);
+       //    const publicKey = keyPair.getPublicKey().toString();
+       //
+       //
+       //
+       //
+       //    const redirect_uri = this.$route.query["redirect_uri"]
+       //    const session_id = this.$route.query["session"]
+       //    const nonce= this.$route.query["nonce"]
+       //    const origin = window.location.origin;
+       //    const domain = window.location.host;
+       //    const ISO8601formatedTimestamp = new Date().toISOString();
+       //    const description = 'Sign in with Tezos to the app.';
+       //    const msg = Buffer.from(`${domain} wants you to sign in with your Near account: . Public Key: ${publicKey} .Date: ${ISO8601formatedTimestamp}. ${description} URI: ${origin}. Version: 1. Nonce: ${nonce}`);
+       //    console.log("msg",msg.toString())
+       //    const { signature } = keyPair.sign(msg);
+       //    console.log("signature",signature)
+       //    const isValid = keyPair.verify(msg, signature);
+       //
+       //    console.log("Signature Valid?:", isValid);
+
+         // window.location = `${redirect_uri}?session=${session_id}&chain=TESTNET&message=${msg}&signature=${signature}`
+
+
+          try {
+              const selector = await setupWalletSelector({
+                  network: "testnet",
+                  modules: [
+                      ...(await setupDefaultWallets()),
+
+                      setupWelldoneWallet(),
+
+
+                  ],
+              });
+
+              const redirect_uri = this.$route.query["redirect_uri"]
+              const session_id = this.$route.query["session"]
+              const nonce= this.$route.query["nonce"]
+              const origin = window.location.origin;
+              const domain = window.location.host;
+              const ISO8601formatedTimestamp = new Date().toISOString();
+              const description = 'Sign in with Near to the app.';
+
+              const modal = setupModal(selector, {
+                  title: "Select a wallet",
+                  description: "Select a wallet to connect to this dApp",
+              });
+              modal.show();
+
+              const wallet = await selector.wallet("welldone-wallet");
+
+
+
+
+              const accounts = await wallet.getAccounts();
+                console.log("accounts",accounts[0].accountId)
+
+
+
+              const message = `${domain} wants you to sign in with your Near account:${accounts[0].accountId} . Public Key: ${accounts[0].publicKey} .Date: ${ISO8601formatedTimestamp}. ${description} URI: ${origin}. Version: 1. Nonce: ${nonce}`;
+
+             const verify = await wallet.verifyOwner({
+                  message: message,
+              });
+
+              const signature = verify.signature
+              console.log("signature",signature)
+
+            //use url encoder for signature
+
+             const urlSignature = encodeURIComponent(signature)
+
+
+             window.location = `${redirect_uri}?session=${session_id}&ecosystem=NEAR&message=${message}&signature=${urlSignature}`
+
+
+
+
+
+          } catch (error) {
+              console.log("Got error:", error);
+          }
+
+      }
+
   }
 }
 </script>

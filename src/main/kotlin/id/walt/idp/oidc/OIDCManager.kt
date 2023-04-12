@@ -21,7 +21,6 @@ import com.nimbusds.openid.connect.sdk.*
 import com.nimbusds.openid.connect.sdk.claims.UserInfo
 import com.nimbusds.openid.connect.sdk.op.OIDCProviderMetadata
 import com.nimbusds.openid.connect.sdk.token.OIDCTokens
-import id.walt.common.KlaxonWithConverters
 import id.walt.crypto.KeyAlgorithm
 import id.walt.crypto.KeyId
 import id.walt.idp.IDPManager
@@ -31,6 +30,7 @@ import id.walt.idp.config.NFTClaimMapping
 import id.walt.idp.config.NFTConfig
 import id.walt.idp.context.ContextFactory
 import id.walt.idp.context.ContextId
+import id.walt.idp.nfts.ChainEcosystem
 import id.walt.idp.nfts.NFTManager
 import id.walt.idp.nfts.NftTokenClaim
 import id.walt.idp.siop.SIOPState
@@ -38,19 +38,19 @@ import id.walt.idp.siwe.SiweManager
 import id.walt.idp.util.WaltIdAlgorithm
 import id.walt.model.dif.*
 import id.walt.multitenancy.TenantId
-import id.walt.nftkit.services.Chain
 import id.walt.services.context.ContextManager
 import id.walt.services.key.KeyFormat
 import id.walt.services.key.KeyService
 import id.walt.services.keystore.KeyType
 import id.walt.services.oidc.OIDCUtils
 import id.walt.siwe.configuration.SiweSession
-import id.walt.verifier.backend.*
+import id.walt.verifier.backend.SIOPResponseVerificationResult
+import id.walt.verifier.backend.VerifierManager
+import id.walt.verifier.backend.VerifierTenant
+import id.walt.verifier.backend.WalletConfiguration
 import id.walt.webwallet.backend.context.WalletContextManager
 import io.javalin.http.BadRequestResponse
-import io.javalin.http.Context
 import io.javalin.http.ForbiddenResponse
-import io.javalin.http.InternalServerErrorResponse
 import javalinjwt.JWTProvider
 import mu.KotlinLogging
 import java.net.URI
@@ -210,8 +210,10 @@ object OIDCManager : IDPManager {
                 IDPConfig.config.claimConfig?.mappingsForScope(s)?.filterIsInstance<NFTClaimMapping>()
                     ?: listOf()
             }
-                .map { m -> NftTokenClaim(Chain.valueOf(m.chain), m.smartContractAddress, m.factorySmartContractAddress) }
-                .distinctBy { c -> "${c.chain}@${c.smartContractAddress}" }
+                .map { m -> NftTokenClaim(
+                  ecosystems = m.claimMappings.keys.map { ChainEcosystem.valueOf(it) }.toSet(),
+                  nftTokenContraints = m.claimMappings.mapValues { entry -> entry.value.nftTokenConstraint }
+                ) }
             if (nftClaimFromMappings.size > 1) {
                 throw BadRequestResponse("Ambiguous NFT authorization request")
             }

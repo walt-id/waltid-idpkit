@@ -17,53 +17,73 @@ import java.nio.charset.StandardCharsets
 
 @Serializable
 data class SignatureVerificationResult(
-    val result: Boolean
+  val result: Boolean
 )
 
 object SiwtManager {
 
-    val client = HttpClient(CIO.create{requestTimeout = 0}) {
-        install(ContentNegotiation) {
-            json(Json {
-                ignoreUnknownKeys = true
-            })
-        }
-        install(Logging) {
-            logger = Logger.SIMPLE
-            level = LogLevel.ALL
-        }
-        expectSuccess = false
+  val client = HttpClient(CIO.create { requestTimeout = 0 }) {
+    install(ContentNegotiation) {
+      json(Json {
+        ignoreUnknownKeys = true
+      })
     }
-
-    fun verifySignature(session: OIDCSession, message: String, publicKey: String, signature: String): Boolean{
-
-        val nonce= getNonce(message)
-        if (session.siweSession?.nonce != nonce) {
-            return false;
-        }
-        if (SiweManager.nonceBlacklists.contains(nonce)) {
-            return false
-        }
-        SiweManager.nonceBlacklists.add(nonce)
-        return runBlocking {
-            val result = client.get("${IDPConfig.config.jsProjectExternalUrl}/tezos/signature/verification?publicKey=${publicKey}&signature=${signature}&message=${URLEncoder.encode(message, StandardCharsets.UTF_8)}") {
-            }.body<Boolean>()
-            return@runBlocking result
-        }
+    install(Logging) {
+      logger = Logger.SIMPLE
+      level = LogLevel.ALL
     }
+    expectSuccess = false
+  }
 
-    fun getAddress(message:String): String{
-        val address= message.split(".").get(0).split(":").last().trim()
-        return address
-    }
+  fun verifySignature(session: OIDCSession, message: String, publicKey: String, signature: String): Boolean {
 
-    fun getNonce(message: String): String{
-        val nonce= message.split(".").last().split(":").last().trim()
-        return nonce
+    val nonce = getNonce(message)
+    if (session.siweSession?.nonce != nonce) {
+      return false;
     }
+    if (SiweManager.nonceBlacklists.contains(nonce)) {
+      return false
+    }
+    SiweManager.nonceBlacklists.add(nonce)
+    return runBlocking {
+      val result = client.get(
+        "${IDPConfig.config.jsProjectExternalUrl}/tezos/signature/verification?publicKey=${publicKey}&signature=${signature}&message=${
+          URLEncoder.encode(
+            message,
+            StandardCharsets.UTF_8
+          )
+        }"
+      ) {
+      }.body<Boolean>()
+      return@runBlocking result
+    }
+  }
 
-    fun getPublicKey(message: String): String{
-        val nonce= message.split(".").get(1).split(":").last().trim()
-        return nonce
+  fun getAddress(message: String): String {
+    val addressRegex = "tz\\w{34}".toRegex()
+    val addressMatch = addressRegex.find(message)!!
+    return addressMatch.value
+  }
+
+  fun getNonce(message: String): String {
+    val nonce = message.split(".").last().split(":").last().trim()
+    return nonce
+  }
+
+  fun getPublicKey(message: String): String {
+    val publicKeyRegex = "edpk\\w{50}".toRegex()
+    val publicKeyMatch = publicKeyRegex.find(message)
+
+    if (publicKeyMatch == null || publicKeyMatch.value.isNullOrEmpty()) {
+      val publicKeyRegex1 = "sppk\\w{51}".toRegex()
+      val publicKeyMatch1 = publicKeyRegex1.find(message)
+      if (publicKeyMatch1 == null || publicKeyMatch1.value.isNullOrEmpty()) {
+        val publicKeyRegex2 = "p2pk\\w{51}".toRegex()
+        val publicKeyMatch2 = publicKeyRegex2.find(message) ?: throw Exception("Key algorithm not supported")
+        return publicKeyMatch2.value
+      }
+      return publicKeyMatch1.value
     }
+    return publicKeyMatch.value
+  }
 }
