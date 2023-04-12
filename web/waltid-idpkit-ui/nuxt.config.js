@@ -57,7 +57,7 @@ export default {
 //    },
 
     proxy: {
-        '/verifier-api/': "http://localhost:8080/",
-        '/api/': "http://localhost:8080/"
+        '/verifier-api/': "http://localhost:8090/",
+        '/api/': "http://localhost:8090/"
     }
 }

@@ -23,6 +23,7 @@ import com.nimbusds.openid.connect.sdk.op.OIDCProviderMetadata
 import com.nimbusds.openid.connect.sdk.token.OIDCTokens
 import id.walt.crypto.KeyAlgorithm
 import id.walt.crypto.KeyId
+import id.walt.idp.AuthorizationMode
 import id.walt.idp.IDPManager
 import id.walt.idp.IDPType
 import id.walt.idp.config.IDPConfig
@@ -70,12 +71,6 @@ object OIDCManager : IDPManager {
 
 
     private val log = KotlinLogging.logger {}
-
-    enum class AuthorizationMode {
-        SIOP,
-        NFT,
-        SIWE,
-    }
 
     val oidcContext
         get() = ContextFactory.getContextFor(ContextId.OIDC)

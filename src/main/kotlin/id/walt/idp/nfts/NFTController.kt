@@ -1,5 +1,6 @@
 package id.walt.idp.nfts
 
+import id.walt.idp.AuthorizationMode
 import id.walt.idp.config.IDPConfig
 import id.walt.idp.oidc.OIDCAuthorizationRole
 import id.walt.idp.oidc.OIDCManager
@@ -53,7 +54,7 @@ object NFTController {
             ctx.status(HttpCode.FOUND).header("Location", uri.toString())
         }
 
-        if (!OIDCManager.AuthorizationMode.NFT.equals(session?.authorizationMode)) {
+        if (!AuthorizationMode.NFT.equals(session?.authorizationMode)) {
             val uri = NFTManager.generateErrorResponseObject(sessionId, "", "Invalid callback.", ecosystem)
             ctx.status(HttpCode.FOUND).header("Location", uri.toString())
         }
