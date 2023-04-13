@@ -58,6 +58,7 @@ export default {
 
     proxy: {
         '/verifier-api/': "http://localhost:8080/",
-        '/api/': "http://localhost:8080/"
+        '/api/': "http://localhost:8080/",
+        '/webjars/': "http://localhost:8080/"
     }
 }
