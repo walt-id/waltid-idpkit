@@ -42,7 +42,45 @@ export default {
     ],
 
     // Build Configuration: https://go.nuxtjs.dev/config-build
-    build: {},
+    build: {
+        babel: {
+            compact: true,
+        },
+        extend(config, { isClient }) {
+            // Extend only webpack config for client-bundle
+            if (isClient) {
+                config.devtool = "source-map";
+            }
+            config.module.rules.push(
+                {
+                    test: /\.js$/,
+                    loader: require.resolve(
+                        "@open-wc/webpack-import-meta-loader"
+                    ),
+                    exclude: /\.vue$/,
+                },
+                {
+                    test: /\.m?js$/,
+                    include: /node_modules[/\\|]@polkadot/i,
+                    use: {
+                        loader: "babel-loader",
+                        options: {
+                            presets: [
+                                "@babel/preset-env",
+                                "@vue/cli-plugin-babel/preset",
+                            ],
+                            plugins: [
+                                "@babel/plugin-proposal-private-methods",
+                                "@babel/plugin-proposal-class-properties",
+                                "@babel/plugin-proposal-object-rest-spread",
+                            ],
+                        },
+                    },
+                }
+            );
+        },
+    },
+
 
     generate: {
         dir: 'dist'
