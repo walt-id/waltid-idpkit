@@ -28,9 +28,9 @@ object SiwpManager {
     expectSuccess = false
   }
   fun verifySignature(session: OIDCSession, message: String, publicKey: String, signature: String): Boolean{
-    println("this is the message: $message")
-    println("this is the public key: $publicKey")
-    println("this is the signature: $signature")
+    println("this is the message yarhem bouk: $message\n")
+    println("this is the public key: $publicKey\n")
+    println("this is the signature: $signature\n")
 
     val nonce= getNonce(message)
     if (session.siweSession?.nonce != nonce) {
@@ -43,7 +43,7 @@ object SiwpManager {
 
 
     return runBlocking {
-      val result = client.get("${IDPConfig.config.jsProjectExternalUrl}/Polkadot/signature/verification?publicKey=${publicKey}&signature=${signature}&message=${URLEncoder.encode(message, StandardCharsets.UTF_8)}") {
+      val result = client.get("${IDPConfig.config.jsProjectExternalUrl}/Polkadot/test?publicKey=${publicKey}&signature=${signature}&message=${URLEncoder.encode(message, StandardCharsets.UTF_8)}") {
       }.body<Boolean>()
       return@runBlocking result
     }
@@ -52,19 +52,23 @@ object SiwpManager {
 
   fun getAddress(message:String): String{
     val address= message.split(" .").get(0).split(":").last().trim()
+    println("this is the address waaaa: $address\n")
     return address
   }
 
   fun getNonce(message: String): String{
     val nonce= message.split(".").last().split(":").last().trim()
+    println("this is the nonce waaaa: $nonce\n")
     return nonce
   }
 
   fun getPublicKey(message: String): String{
-    val publicKeyPrefix = "Public Key: ed25519:"
-    val startIndex = message.indexOf(publicKeyPrefix) + publicKeyPrefix.length
-    val endIndex = message.indexOf(".", startIndex)
-    return message.substring(startIndex, endIndex)
+    val startIndex = message.indexOf("Public Key: ")
+
+
+    val endIndex = message.indexOf(" ", startIndex + 12)
+
+    return message.substring(startIndex + 12, endIndex)
   }
 
 
