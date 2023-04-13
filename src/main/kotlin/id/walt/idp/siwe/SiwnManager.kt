@@ -33,9 +33,7 @@ object SiwnManager {
         expectSuccess = false
     }
     fun verifySignature(session: OIDCSession, message: String, publicKey: String, signature: String): Boolean{
-        println("this is the message: $message")
-        println("this is the public key: $publicKey")
-        println("this is the signature: $signature")
+
 
         val nonce= getNonce(message)
         if (session.siweSession?.nonce != nonce) {
