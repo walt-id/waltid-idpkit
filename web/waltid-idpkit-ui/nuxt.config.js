@@ -61,5 +61,9 @@ export default {
         '/verifier-api/': "http://localhost:8080/",
         '/api/': "http://localhost:8080/",
         '/webjars/': "http://localhost:8080/"
+    },
+
+    server: {
+        port: 5000
     }
 }
