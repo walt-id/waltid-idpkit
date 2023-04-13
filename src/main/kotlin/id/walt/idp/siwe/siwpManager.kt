@@ -28,9 +28,6 @@ object SiwpManager {
     expectSuccess = false
   }
   fun verifySignature(session: OIDCSession, message: String, publicKey: String, signature: String): Boolean{
-    println("this is the message yarhem bouk: $message\n")
-    println("this is the public key: $publicKey\n")
-    println("this is the signature: $signature\n")
 
     val nonce= getNonce(message)
     if (session.siweSession?.nonce != nonce) {
@@ -52,13 +49,12 @@ object SiwpManager {
 
   fun getAddress(message:String): String{
     val address= message.split(" .").get(0).split(":").last().trim()
-    println("this is the address waaaa: $address\n")
     return address
   }
 
   fun getNonce(message: String): String{
     val nonce= message.split(".").last().split(":").last().trim()
-    println("this is the nonce waaaa: $nonce\n")
+
     return nonce
   }
 
