@@ -14,7 +14,7 @@ COPY . /appbuild
 VOLUME /home/gradle/.gradle
 
 RUN if [ -z "$SKIP_TESTS" ]; \
-    then echo "* Running full build" && gradle -i clean build installDist -x test; \
+    then echo "* Running full build" && gradle -i clean build installDist; \
     else echo "* Building but skipping tests" && gradle -i clean installDist -x test; \
     fi
 
