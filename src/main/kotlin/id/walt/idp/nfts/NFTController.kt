@@ -40,12 +40,11 @@ object NFTController {
         }
 
     fun nftVerification(ctx: Context) {
-        val test = "TESTNET";
 
         val sessionId = ctx.queryParam("session") ?: throw BadRequestResponse("Session not specified")
         val message = ctx.queryParam("message") ?: throw BadRequestResponse("Message not specified")
         val signature = ctx.queryParam("signature") ?: throw BadRequestResponse("Signature not specified")
-        val ecosystem = ctx.queryParam("ecosystem")?.let { ChainEcosystem.valueOf(it.toUpperCase()) } ?: throw BadRequestResponse("Ecosystem not specified")
+        val ecosystem = ctx.queryParam("ecosystem")?.let { ChainEcosystem.valueOf(it.uppercase()) } ?: throw BadRequestResponse("Ecosystem not specified")
 
 
         val session = OIDCManager.getOIDCSession(sessionId)
@@ -80,9 +79,9 @@ object NFTController {
           }
           ChainEcosystem.POLKADOT -> {
             val publicKey = SiwpManager.getPublicKey(message)
-            print( "is the public key" + publicKey )
+
             address = SiwpManager.getAddress(message)
-            print("is address " + address)
+
             SiwpManager.verifySignature(session!!, message, publicKey, signature)
           }
 

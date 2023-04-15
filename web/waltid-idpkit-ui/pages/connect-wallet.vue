@@ -277,7 +277,7 @@ Nonce: ${nonce}`;
                 console.log("signature", signature);
                 const urlSignature = encodeURIComponent(signature);
                 console.log("urlSignature", urlSignature);
-                window.location = `${redirect_uri}?session=${session_id}&ecosystem=NEAR&message=${message}&signature=${urlSignature}`;
+                window.location = `${redirect_uri}?session=${session_id}&ecosystem=POLKADOT&message=${message}&signature=${urlSignature}`;
             }
         },
     },
