@@ -1,11 +1,11 @@
 {
   "verifierUiUrl": "",
-  "verifierApiUrl": "http://localhost:8090/api/siop/default",
+  "verifierApiUrl": "http://localhost:8080/api/siop/default",
 
   "wallets": {
     "walt.id": {
       "id": "walt.id",
-      "url": "http://localhost:3000",
+      "url": "https://wallet.walt-test.cloud",
       "presentPath": "api/siop/initiatePresentation/",
       "receivePath" : "api/siop/initiateIssuance/",
       "description": "localhost wallet"
