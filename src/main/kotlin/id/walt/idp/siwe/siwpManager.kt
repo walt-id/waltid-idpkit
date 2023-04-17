@@ -28,7 +28,6 @@ object SiwpManager {
     expectSuccess = false
   }
   fun verifySignature(session: OIDCSession, message: String, publicKey: String, signature: String): Boolean{
-
     val nonce= getNonce(message)
     if (session.siweSession?.nonce != nonce) {
       return false;
