@@ -269,15 +269,20 @@ Nonce: ${nonce}`;
             if (!!signRaw) {
                 // after making sure that signRaw is defined
                 // we can use it to sign our message
-                const { signature } = await signRaw({
+                const  signature = await signRaw({
                     address: account.address,
                     data: stringToHex(message),
-                    type: "payload",
+                    type: "bytes",
                 });
-                console.log("signature", signature);
-                const urlSignature = encodeURIComponent(signature);
-                console.log("urlSignature", urlSignature);
-                window.location = `${redirect_uri}?session=${session_id}&ecosystem=POLKADOT&message=${message}&signature=${urlSignature}`;
+
+                const urlSignature = encodeURIComponent(signature.signature);
+
+                const urlMessage = encodeURIComponent(message);
+
+
+              let url = `${redirect_uri}?session=${session_id}&ecosystem=Polkadot&message=${urlMessage}&signature=${urlSignature}`;
+
+            window.location = url;
             }
         },
     },
