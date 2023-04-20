@@ -28,6 +28,10 @@ keys:
   0xc8ca7c4f2dc014d7e4fc6973052da1517b4c54da: "9b9c46d0873a9982ade718ab3f4cfc57172b2f07c21b9901ddf239e931d2d6dc"
 
 
+indexersUrl:
+  uniqueUrl: "https://api-unique.uniquescan.io/v1/graphql"
+  opalUrl: "https://api-opal.uniquescan.io/v1/graphql"
+
 apiKeys:
   ethereumBlockExplorer: "JGD5ZUUBHE8CUXPNKZASVQPHRGBMB7A5XV"
   polygonBlockExplorer: "DZ3PFVWGJE5B8DMDQPRZ5JFBR6U484B82G"
