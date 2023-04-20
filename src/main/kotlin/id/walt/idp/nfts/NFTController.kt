@@ -83,8 +83,8 @@ object NFTController {
           }
           ChainEcosystem.POLKADOT -> {
             val publicKey = SiwpManager.getPublicKey(message)
+            address = SiwpManager.getPublicKey(message)
 
-            address = SiwpManager.getAddress(message)
 
             SiwpManager.verifySignature(session!!, message, publicKey, signature)
           }
