@@ -6,6 +6,7 @@ import id.walt.idp.oidc.OIDCManager
 import id.walt.idp.oidc.ResponseVerificationResult
 import id.walt.idp.siwe.SiweManager
 import id.walt.idp.siwe.SiwnManager
+import id.walt.idp.siwe.SiwpManager
 import id.walt.idp.siwe.SiwtManager
 import id.walt.siwe.SiweRequest
 import id.walt.siwe.eip4361.Eip4361Message
@@ -39,12 +40,15 @@ object NFTController {
         }
 
     fun nftVerification(ctx: Context) {
-        val test = "TESTNET";
 
         val sessionId = ctx.queryParam("session") ?: throw BadRequestResponse("Session not specified")
+      print("Session ID: $sessionId")
         val message = ctx.queryParam("message") ?: throw BadRequestResponse("Message not specified")
+      print("Message: $message")
+        val ecosystem = ctx.queryParam("ecosystem")?.let { ChainEcosystem.valueOf(it.uppercase()) } ?: throw BadRequestResponse("Ecosystem not specified")
+      print("Ecosystem: $ecosystem")
         val signature = ctx.queryParam("signature") ?: throw BadRequestResponse("Signature not specified")
-        val ecosystem = ctx.queryParam("ecosystem")?.let { ChainEcosystem.valueOf(it.toUpperCase()) } ?: throw BadRequestResponse("Ecosystem not specified")
+      print("Signature: $signature")
 
 
         val session = OIDCManager.getOIDCSession(sessionId)
@@ -72,11 +76,19 @@ object NFTController {
           }
           ChainEcosystem.NEAR -> {
             val publicKey = SiwnManager.getPublicKey(message)
-            print( "is the public key" + publicKey )
+            print("Public Key: $publicKey")
             address = SiwnManager.getAddress(message)
-            print("is address " + address)
+            print("Address: $address")
             SiwnManager.verifySignature(session!!, message, publicKey, signature)
           }
+          ChainEcosystem.POLKADOT -> {
+            val publicKey = SiwpManager.getPublicKey(message)
+            address = SiwpManager.getPublicKey(message)
+
+
+            SiwpManager.verifySignature(session!!, message, publicKey, signature)
+          }
+
         }
 
         if(!siwxResult) {

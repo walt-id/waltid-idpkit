@@ -17,7 +17,7 @@ data class NftTokenConstraint(
 )
 
 enum class ChainEcosystem {
-    EVM, TEZOS, NEAR
+    EVM, TEZOS, NEAR , POLKADOT
 }
 
 data class NftTokenClaim(

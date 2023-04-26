@@ -62,7 +62,7 @@ dependencies {
     testImplementation("io.kotest:kotest-assertions-json:5.5.0")
 
     // NftKit
-    implementation("id.walt:waltid-nftkit:1.0.0")
+    implementation("id.walt:waltid-nftkit:1.2304191004.0")
 
     // HTTP / Client: ktor
     implementation("io.ktor:ktor-client-core:2.0.0")
