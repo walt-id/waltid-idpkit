@@ -26,14 +26,15 @@ dependencies {
     implementation("io.javalin:javalin-bundle:4.6.6")
     implementation("com.github.kmehrunes:javalin-jwt:0.3")
     implementation("com.beust:klaxon:5.6")
-    implementation("com.nimbusds:oauth2-oidc-sdk:9.41")
+    //implementation("com.nimbusds:oauth2-oidc-sdk:9.41")
+    implementation("com.nimbusds:oauth2-oidc-sdk:9.43.1")
 
     // CLI
     implementation("com.github.ajalt.clikt:clikt-jvm:3.5.0")
     implementation("com.github.ajalt.clikt:clikt:3.5.0")
 
     // SSIKIT
-    implementation("id.walt:waltid-ssi-kit:1.13.0-SNAPSHOT6")
+    implementation("id.walt:waltid-ssikit:1.SNAPSHOT")
     implementation("id.walt:waltid-walletkit:0.7.0-SNAPSHOT")
 
     // Service-Matrix

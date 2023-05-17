@@ -1,14 +1,21 @@
 {
-  "verifierUiUrl": "",
-  "verifierApiUrl": "http://localhost:8080/api/siop/default",
+  "verifierUiUrl": "http://localhost:7777/sharecredential?state=",
+  "verifierApiUrl": "http://localhost:7777/api/siop/default",
 
   "wallets": {
     "walt.id": {
-      "id": "walt.id",
-      "url": "https://wallet.walt-test.cloud",
+      "id": "waltid",
+      "url": "http://localhost:3000",
       "presentPath": "api/siop/initiatePresentation/",
       "receivePath" : "api/siop/initiateIssuance/",
-      "description": "localhost wallet"
+      "description": "walt.id web wallet"
+    },
+    "local": {
+      "id": "local",
+      "url": "http://localhost:3000",
+      "presentPath": "api/siop/initiatePresentation/",
+      "receivePath" : "api/siop/initiateIssuance/",
+      "description": "local wallet"
     }
   }
 }
