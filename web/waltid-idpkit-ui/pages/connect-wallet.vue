@@ -311,11 +311,27 @@ Nonce: ${nonce}`;
             }
         },
         async flowWallet(){
-            fcl.authenticate()
-            fcl.currentUser.subscribe(async (currentUser) => {
-                console.log("The Current User", currentUser);
+            const redirect_uri = this.$route.query["redirect_uri"];
+            const session_id = this.$route.query["session"];
+            const nonce = this.$route.query["nonce"];
+            const origin = window.location.origin;
+            const domain = window.location.host;
+            const ISO8601formatedTimestamp = new Date().toISOString();
+            const description = "Sign in with Flow to the app.";
 
+                fcl.currentUser.subscribe(async (currentUser) => {
+                const message = `${domain} wants you to sign in with your Flow account:${currentUser.addr} . Public Key: ${currentUser.cid} .Date: ${ISO8601formatedTimestamp}. ${description} URI: ${origin}. Version: 1. Nonce: ${nonce}`;
+                console.log("The Current User", currentUser);
+                console.log("The message",message);
+
+                const MSG = Buffer.from(message).toString("hex")
+
+                const signature = await fcl.currentUser().signUserMessage(MSG);
+                    console.log("The signature",signature);
+
+                console.log("The signature",signature[0].signature);
             })
+
         },
     },
 };
