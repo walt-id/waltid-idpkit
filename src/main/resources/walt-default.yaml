@@ -13,9 +13,14 @@ azureKeyVaultConfig:
 
 providers:
     ethereum: "ethereum"
-    goerli: "https://eth-goerli.g.alchemy.com/v2/e8No6Y2awTnVnf2tAgj-h-sImyCxzXpg"
-    polygon: "https://polygon-mainnet.g.alchemy.com/v2/yjbYhlaH3U_vfnTiRQ3miGQS0cKwQMkB"
-    mumbai: "https://polygon-mumbai.g.alchemy.com/v2/yjbYhlaH3U_vfnTiRQ3miGQS0cKwQMkB"
+    goerli: "https://eth-goerli.g.alchemy.com/v2/5TYSteGJgJwJjaQTNN3j_4JtYcvdr3Uy"
+    sepolia: "https://eth-sepolia.g.alchemy.com/v2/MBOqmZ2X5rRqHqA4Mu_nB3cy9LqndpCX"
+    polygon: "https://polygon-mainnet.g.alchemy.com/v2/5TYSteGJgJwJjaQTNN3j_4JtYcvdr3Uy"
+    mumbai: "https://polygon-mumbai.g.alchemy.com/v2/5TYSteGJgJwJjaQTNN3j_4JtYcvdr3Uy"
+    astar: "https://evm.astar.network"
+    moonbeam: "https://rpc.api.moonbeam.network"
+    unique: "https://rpc.unique.network"
+    opal: "https://rpc-opal.unique.network"
 
 privateKey: "bd4cb3e507f342ee3a710370cef39dda48f17b0a158b0b8dd3f000fbd5b2c2d9"
 
