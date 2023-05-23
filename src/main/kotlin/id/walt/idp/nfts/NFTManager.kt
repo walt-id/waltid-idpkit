@@ -11,7 +11,6 @@ import id.walt.nftkit.utilis.Common
 import mu.KotlinLogging
 import net.minidev.json.JSONObject
 import net.minidev.json.parser.JSONParser
-import java.math.BigInteger
 import java.net.URI
 
 object NFTManager {
@@ -74,15 +73,9 @@ object NFTManager {
           ?: return false.also { logger.error { "No nft token constraint found for given ecosystem" } }
         return if(tokenConstraint.factorySmartContractAddress.isNullOrEmpty()) {
           logger.info { "Verifying collection ownership on $ecosystem, for account: $account, chain: ${tokenConstraint.chain}, contract: ${tokenConstraint.smartContractAddress}" }
-          when(ecosystem) {
-            ChainEcosystem.EVM -> NftService.balanceOf(
-                Common.getEVMChain(tokenConstraint.chain!!.toString()),
-                tokenConstraint.smartContractAddress!!, account.trim()
-              )?.compareTo(BigInteger("0")) == 1
-            ChainEcosystem.TEZOS, ChainEcosystem.NEAR  , ChainEcosystem.POLKADOT-> VerificationService.verifyNftOwnershipWithinCollection(
+          VerificationService.verifyNftOwnershipWithinCollection(
               tokenConstraint.chain!!,
               tokenConstraint.smartContractAddress!!,account)
-          }
         } else {
           println("data nft verification")
           when(ecosystem) {

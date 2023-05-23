@@ -295,7 +295,7 @@ object OIDCManager : IDPManager {
                     URI.create("${walletUrl}?state=${SIOPState(idpType, session.id).encode()}")
                 } else {
                     val siopReq = verifierManager.newRequest(
-                        walletUrl = walletUrl.toString(),
+                        walletUrl = walletUrl,
                         presentationDefinition = session.presentationDefinition!!,
                         //state = session.id
                         state = SIOPState(idpType, session.id).encode(),
