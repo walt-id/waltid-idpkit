@@ -22,6 +22,7 @@ providers:
     unique: "https://rpc.unique.network"
     opal: "https://rpc-opal.unique.network"
 
+
 privateKey: "bd4cb3e507f342ee3a710370cef39dda48f17b0a158b0b8dd3f000fbd5b2c2d9"
 
 #privateKey: "a1fcab9b58015f452c9a89d4cde4807a80111ab27142730bfb96be936e576be1"
