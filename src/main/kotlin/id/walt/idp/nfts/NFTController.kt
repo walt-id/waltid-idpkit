@@ -4,10 +4,7 @@ import id.walt.idp.config.IDPConfig
 import id.walt.idp.oidc.OIDCAuthorizationRole
 import id.walt.idp.oidc.OIDCManager
 import id.walt.idp.oidc.ResponseVerificationResult
-import id.walt.idp.siwe.SiweManager
-import id.walt.idp.siwe.SiwnManager
-import id.walt.idp.siwe.SiwpManager
-import id.walt.idp.siwe.SiwtManager
+import id.walt.idp.siwe.*
 import id.walt.siwe.SiweRequest
 import id.walt.siwe.eip4361.Eip4361Message
 import io.javalin.apibuilder.ApiBuilder
@@ -84,9 +81,13 @@ object NFTController {
           ChainEcosystem.POLKADOT -> {
             val publicKey = SiwpManager.getPublicKey(message)
             address = SiwpManager.getPublicKey(message)
-
-
             SiwpManager.verifySignature(session!!, message, publicKey, signature)
+          }
+          ChainEcosystem.FLOW -> {
+            val publicKey = SiwfManager.getPublicKey(message)
+            address = SiwfManager.getAddress(message)
+            SiwfManager.verifySignature(session!!, message, publicKey, signature)
+
           }
 
         }

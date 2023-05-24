@@ -68,5 +68,4 @@ object SiwnManager {
         return message.substring(startIndex, endIndex)
     }
 
-
 }
