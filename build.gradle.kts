@@ -26,21 +26,22 @@ dependencies {
     implementation("io.javalin:javalin-bundle:4.6.6")
     implementation("com.github.kmehrunes:javalin-jwt:0.3")
     implementation("com.beust:klaxon:5.6")
-    implementation("com.nimbusds:oauth2-oidc-sdk:9.41")
+    //implementation("com.nimbusds:oauth2-oidc-sdk:9.41")
+    implementation("com.nimbusds:oauth2-oidc-sdk:9.43.1")
 
     // CLI
     implementation("com.github.ajalt.clikt:clikt-jvm:3.5.0")
     implementation("com.github.ajalt.clikt:clikt:3.5.0")
 
     // SSIKIT
-    implementation("id.walt:waltid-ssi-kit:1.13.0-SNAPSHOT6")
-    implementation("id.walt:waltid-walletkit:0.7.0-SNAPSHOT")
+    implementation("id.walt:waltid-ssikit:1.2305121558.0")
+    implementation("id.walt:waltid-walletkit:1.2305151432.0")
 
     // Service-Matrix
     implementation("id.walt.servicematrix:WaltID-ServiceMatrix:1.1.3")
 
     // NftKit
-    implementation("id.walt:waltid-nftkit:1.0.0")
+    //implementation("id.walt:waltid-nftkit:1.0.0")
 
     // walt-siwe
     implementation("id.walt:waltid-siwe:0.1.0-SNAPSHOT")
@@ -62,7 +63,7 @@ dependencies {
     testImplementation("io.kotest:kotest-assertions-json:5.5.0")
 
     // NftKit
-    implementation("id.walt:waltid-nftkit:1.2304191004.0")
+    implementation("id.walt:waltid-nftkit:1.2305230002.0")
 
     // HTTP / Client: ktor
     implementation("io.ktor:ktor-client-core:2.0.0")

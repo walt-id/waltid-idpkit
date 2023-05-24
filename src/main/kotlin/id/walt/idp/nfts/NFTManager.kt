@@ -1,7 +1,5 @@
 package id.walt.idp.nfts
 
-import com.nimbusds.jose.shaded.json.JSONObject
-import com.nimbusds.jose.shaded.json.parser.JSONParser
 import com.nimbusds.oauth2.sdk.AuthorizationRequest
 import id.walt.common.KlaxonWithConverters
 import id.walt.idp.config.IDPConfig
@@ -11,6 +9,8 @@ import id.walt.nftkit.opa.DynamicPolicy
 import id.walt.nftkit.services.*
 import id.walt.nftkit.utilis.Common
 import mu.KotlinLogging
+import net.minidev.json.JSONObject
+import net.minidev.json.parser.JSONParser
 import java.math.BigInteger
 import java.net.URI
 
