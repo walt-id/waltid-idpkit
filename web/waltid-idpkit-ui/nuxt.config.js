@@ -96,12 +96,12 @@ export default {
 //    },
 
     proxy: {
-        '/verifier-api/': "http://localhost:8080/",
-        '/api/': "http://localhost:8080/",
-        '/webjars/': "http://localhost:8080/"
+        '/verifier-api/': "http://localhost:7776/",
+        '/api/': "http://localhost:7776/",
+        '/webjars/': "http://localhost:7776/"
     },
 
     server: {
-        port: 5000
+        port: 7777
     }
 }

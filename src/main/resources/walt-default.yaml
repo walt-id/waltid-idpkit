@@ -22,6 +22,7 @@ providers:
     unique: "https://rpc.unique.network"
     opal: "https://rpc-opal.unique.network"
 
+
 privateKey: "bd4cb3e507f342ee3a710370cef39dda48f17b0a158b0b8dd3f000fbd5b2c2d9"
 
 #privateKey: "a1fcab9b58015f452c9a89d4cde4807a80111ab27142730bfb96be936e576be1"
@@ -43,5 +44,6 @@ apiKeys:
   alchemy: "yjbYhlaH3U_vfnTiRQ3miGQS0cKwQMkB"
   nftstorage: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJkaWQ6ZXRocjoweDYwNDNEYThENjU2RTU3NTg2ZDk3MkM1ZDM5RUNENzI1NTNCM2Q1NjAiLCJpc3MiOiJuZnQtc3RvcmFnZSIsImlhdCI6MTY1NDYxNTQ2NjIwNCwibmFtZSI6Ik5GVCBLSVQifQ.PkMJpU3aJMQXqzq1nPnHJcWJR-32as3bQed3GBszMdg
 "
+  subscan: ""
 tezosBackendServer: "http://localhost:3000"
 

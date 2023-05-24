@@ -2,6 +2,7 @@ package id.walt.idp
 
 import com.github.ajalt.clikt.core.subcommands
 import id.walt.cli.*
+import id.walt.cli.did.*
 import id.walt.idp.cli.*
 import id.walt.servicematrix.ServiceMatrix
 import id.walt.servicematrix.ServiceRegistry
