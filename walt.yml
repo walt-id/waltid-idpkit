@@ -43,5 +43,7 @@ apiKeys:
     alchemy: "yjbYhlaH3U_vfnTiRQ3miGQS0cKwQMkB"
     nftstorage: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJkaWQ6ZXRocjoweDYwNDNEYThENjU2RTU3NTg2ZDk3MkM1ZDM5RUNENzI1NTNCM2Q1NjAiLCJpc3MiOiJuZnQtc3RvcmFnZSIsImlhdCI6MTY1NDYxNTQ2NjIwNCwibmFtZSI6Ik5GVCBLSVQifQ.PkMJpU3aJMQXqzq1nPnHJcWJR-32as3bQed3GBszMdg
 "
+    subscan: ""
+
 tezosBackendServer: "http://localhost:3000"
 
