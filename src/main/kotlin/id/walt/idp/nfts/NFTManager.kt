@@ -82,6 +82,10 @@ object NFTManager {
             ChainEcosystem.TEZOS, ChainEcosystem.NEAR  , ChainEcosystem.POLKADOT-> VerificationService.verifyNftOwnershipWithinCollection(
               tokenConstraint.chain!!,
               tokenConstraint.smartContractAddress!!,account)
+
+            ChainEcosystem.FLOW -> VerificationService.verifyNftOwnershipInCollectionFlow(tokenConstraint.chain!!,
+              tokenConstraint.smartContractAddress!!,account ,tokenConstraint.collectionPath!!)
+
           }
         } else {
           println("data nft verification")
