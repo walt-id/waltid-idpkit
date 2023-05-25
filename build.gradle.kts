@@ -30,7 +30,7 @@ dependencies {
     implementation("com.nimbusds:oauth2-oidc-sdk:9.43.1")
 
     // CLI
-    implementation("com.github.ajalt.clikt:clikt-jvm:3.5.0")
+    implementation("com.github.ajalt.clikt:clikt-jvm:3.5.2")
     implementation("com.github.ajalt.clikt:clikt:3.5.0")
 
     // SSIKIT
@@ -47,31 +47,31 @@ dependencies {
     implementation("id.walt:waltid-siwe:0.1.0-SNAPSHOT")
 
     // Logging
-    implementation("org.slf4j:slf4j-api:2.0.3")
-    implementation("org.slf4j:slf4j-simple:2.0.3")
-    implementation("io.github.microutils:kotlin-logging-jvm:3.0.0")
+    implementation("org.slf4j:slf4j-api:2.0.5")
+    implementation("org.slf4j:slf4j-simple:2.0.5")
+    implementation("io.github.microutils:kotlin-logging-jvm:3.0.5")
 
     //JSON
     implementation("com.jayway.jsonpath:json-path:2.7.0")
 
     // Testing
     //testImplementation(kotlin("test-junit"))
-    testImplementation("io.mockk:mockk:1.13.2")
+    testImplementation("io.mockk:mockk:1.13.4")
 
-    testImplementation("io.kotest:kotest-runner-junit5:5.5.0")
-    testImplementation("io.kotest:kotest-assertions-core:5.5.0")
-    testImplementation("io.kotest:kotest-assertions-json:5.5.0")
+    testImplementation("io.kotest:kotest-runner-junit5:5.5.5")
+    testImplementation("io.kotest:kotest-assertions-core:5.5.5")
+    testImplementation("io.kotest:kotest-assertions-json:5.5.5")
 
     // NftKit
     implementation("id.walt:waltid-nftkit:1.2305230002.0")
 
     // HTTP / Client: ktor
-    implementation("io.ktor:ktor-client-core:2.0.0")
-    implementation("io.ktor:ktor-client-content-negotiation:2.0.0")
-    implementation("io.ktor:ktor-serialization-kotlinx-json:2.0.0")
-    implementation("io.ktor:ktor-client-cio:2.0.0")
-    implementation("io.ktor:ktor-client-logging:2.0.0")
-    implementation("io.ktor:ktor-client-auth:2.0.0")
+    implementation("io.ktor:ktor-client-core:2.2.4")
+    implementation("io.ktor:ktor-client-content-negotiation:2.2.4")
+    implementation("io.ktor:ktor-serialization-kotlinx-json:2.2.4")
+    implementation("io.ktor:ktor-client-cio:2.2.4")
+    implementation("io.ktor:ktor-client-logging:2.2.4")
+    implementation("io.ktor:ktor-client-auth:2.2.4")
 }
 
 tasks.withType<KotlinCompile> {
