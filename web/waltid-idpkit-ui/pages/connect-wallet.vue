@@ -320,6 +320,8 @@ Nonce: ${nonce}`;
             const description = "Sign in with Flow to the app.";
 
                 fcl.currentUser.subscribe(async (currentUser) => {
+
+                    fcl.config().put('flow.network', 'testnet');
                 const message = `${domain} wants you to sign in with your Flow account:${currentUser.addr} . Public Key: ${currentUser.cid} .Date: ${ISO8601formatedTimestamp}. ${description} URI: ${origin}. Version: 1. Nonce: ${nonce}`;
                 console.log("The Current User", currentUser);
                 console.log("The message",message);
@@ -329,8 +331,19 @@ Nonce: ${nonce}`;
                 const signature = await fcl.currentUser().signUserMessage(MSG);
                     console.log("The signature",signature);
 
-                console.log("The signature",signature[0].signature);
-            })
+                // const isValid = await fcl.AppUtils.verifyUserSignatures(MSG,signature);
+                //
+                // console.log("The isValid",isValid);
+
+                const urlSignature = encodeURIComponent(signature);
+                const urlMessage = encodeURIComponent(message);
+                let url = `${redirect_uri}?session=${session_id}&ecosystem=Flow&message=${urlMessage}&signature=${urlSignature}`;
+                window.location = url;
+
+
+
+                })
+
 
         },
     },
