@@ -331,14 +331,23 @@ Nonce: ${nonce}`;
                 const signature = await fcl.currentUser().signUserMessage(MSG);
                     console.log("The signature",signature);
 
-                // const isValid = await fcl.AppUtils.verifyUserSignatures(MSG,signature);
-                //
-                // console.log("The isValid",isValid);
+                const isValid = await fcl.AppUtils.verifyUserSignatures(MSG,signature);
+                    console.log("The isValid",isValid);
 
-                const urlSignature = encodeURIComponent(signature);
-                const urlMessage = encodeURIComponent(message);
-                let url = `${redirect_uri}?session=${session_id}&ecosystem=Flow&message=${urlMessage}&signature=${urlSignature}`;
-                window.location = url;
+
+                    if (!isValid) {
+                        throw new Error("Signature is not valid");
+                    }
+                    else {
+                        console.log("Signature is valid");
+                        const urlSignature = encodeURIComponent(signature);
+                        const urlMessage = encodeURIComponent(message);
+                        let url = `${redirect_uri}?session=${session_id}&ecosystem=Flow&message=${urlMessage}&signature=${urlSignature}`;
+
+                        window.location = url;
+
+                    }
+
 
 
 
