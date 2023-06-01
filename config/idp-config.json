@@ -1,6 +1,6 @@
 {
-  "externalUrl": "http://localhost:7777",
-  "jsProjectExternalUrl":"http://localhost:7777",
+  "externalUrl": "http://localhost:5000",
+  "jsProjectExternalUrl":"http://localhost:4000",
   "claimConfig": {
     "vc_mappings": [
       {
@@ -69,7 +69,7 @@
       }
     ],
     "default_nft_token_claim": {
-        "ecosystems": [ "EVM", "TEZOS", "NEAR" ,"POLKADOT"],
+        "ecosystems": [ "EVM", "TEZOS", "NEAR" ,"POLKADOT" , "FLOW"],
         "nftTokenContraints": {
           "EVM": {
             "chain": "POLYGON",
@@ -91,6 +91,12 @@
             "factorySmartContractAddress": "",
             "smartContractAddress": "1062"
 
+          },
+          "FLOW": {
+            "chain": "TESTNET",
+            "factorySmartContractAddress": "",
+            "smartContractAddress": "0xa9ccb9756a0ee7eb",
+            "collectionPath": "/public/exampleNFTCollection"
           }
         }
     },

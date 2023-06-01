@@ -25,6 +25,12 @@
                     Connect wallet(Polkadot EVM)
                 </button>
             </div>
+            <div class="text-center">
+                <br />
+                <button class="btn btn-success" @click="flowWallet">
+                    Connect wallet(Flow)
+                </button>
+            </div>
         </div>
     </div>
 </template>
@@ -61,6 +67,25 @@ import {
     web3FromSource,
 } from "@polkadot/extension-dapp";
 import { stringToHex } from "@polkadot/util";
+import { send as httpSend } from "@onflow/transport-http";
+import * as fcl from "@onflow/fcl"
+
+// config flow connect screen
+fcl.config()
+    .put("app.detail.title", "Walt.id Sign In Solution")
+    .put("app.detail.icon", "https://images.squarespace-cdn.com/content/v1/609c0ddf94bcc0278a7cbdb4/4d493ccf-c893-4882-925f-fda3256c38f4/Walt.id_Logo_transparent.png?format=1500w")
+// config flow to use HTTP
+fcl
+    .config()
+    .put("accessNode.api", "https://rest-testnet.onflow.org")
+    .put("sdk.transport", httpSend)
+// config discovery endpoint
+fcl.config({
+    // Testnet
+    "discovery.wallet": "https://fcl-discovery.onflow.org/testnet/authn",
+    // Mainnet
+    // "discovery.wallet": "https://fcl-discovery.onflow.org/authn",
+})
 
 const providerOptions = {
     walletconnect: {
@@ -284,6 +309,44 @@ Nonce: ${nonce}`;
 
             window.location = url;
             }
+        },
+        async flowWallet(){
+            const redirect_uri = this.$route.query["redirect_uri"];
+            const session_id = this.$route.query["session"];
+            const nonce = this.$route.query["nonce"];
+            const origin = window.location.origin;
+            const domain = window.location.host;
+            const ISO8601formatedTimestamp = new Date().toISOString();
+            const description = "Sign in with Flow to the app.";
+
+                fcl.currentUser.subscribe(async (currentUser) => {
+
+                    fcl.config().put('flow.network', 'testnet');
+                const message = `${domain} wants you to sign in with your Flow account:${currentUser.addr} . Public Key: ${currentUser.cid} .Date: ${ISO8601formatedTimestamp}. ${description} URI: ${origin}. Version: 1. Nonce: ${nonce}`;
+                console.log("The Current User", currentUser);
+                console.log("The message",message);
+
+
+                         const MSG = Buffer.from(message).toString("hex")
+                         const signature =await fcl.currentUser.signUserMessage(MSG)
+                        console.log("The signature",signature);
+
+                            const urlSignature = encodeURIComponent(JSON.stringify(signature))
+
+                            console.log("The urlSignature",urlSignature);
+
+                            const urlMessage = encodeURIComponent(message);
+                            let url = `${redirect_uri}?session=${session_id}&ecosystem=Flow&message=${urlMessage}&signature=${urlSignature}`;
+                            console.log("The url",url)
+                           window.location = url;
+
+
+
+
+
+                })
+
+
         },
     },
 };

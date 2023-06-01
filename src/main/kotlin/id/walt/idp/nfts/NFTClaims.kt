@@ -14,10 +14,12 @@ data class NftTokenConstraint(
     val smartContractAddress: String?,
     @Json(serializeNull = false)
     val factorySmartContractAddress: String?,
+    @Json(serializeNull = false)
+    val collectionPath: String?,
 )
 
 enum class ChainEcosystem {
-    EVM, TEZOS, NEAR , POLKADOT
+    EVM, TEZOS, NEAR , POLKADOT , FLOW
 }
 
 data class NftTokenClaim(
