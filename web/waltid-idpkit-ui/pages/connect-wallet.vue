@@ -326,27 +326,20 @@ Nonce: ${nonce}`;
                 console.log("The Current User", currentUser);
                 console.log("The message",message);
 
-                const MSG = Buffer.from(message).toString("hex")
 
-                const signature = await fcl.currentUser().signUserMessage(MSG);
-                    console.log("The signature",signature);
+                         const MSG = Buffer.from(message).toString("hex")
+                         const signature =await fcl.currentUser.signUserMessage(MSG)
+                        console.log("The signature",signature);
 
-                const isValid = await fcl.AppUtils.verifyUserSignatures(MSG,signature);
-                    console.log("The isValid",isValid);
+                            const urlSignature = encodeURIComponent(JSON.stringify(signature))
 
+                            console.log("The urlSignature",urlSignature);
 
-                    if (!isValid) {
-                        throw new Error("Signature is not valid");
-                    }
-                    else {
-                        console.log("Signature is valid");
-                        const urlSignature = encodeURIComponent(signature);
-                        const urlMessage = encodeURIComponent(message);
-                        let url = `${redirect_uri}?session=${session_id}&ecosystem=Flow&message=${urlMessage}&signature=${urlSignature}`;
+                            const urlMessage = encodeURIComponent(message);
+                            let url = `${redirect_uri}?session=${session_id}&ecosystem=Flow&message=${urlMessage}&signature=${urlSignature}`;
+                            console.log("The url",url)
+                           window.location = url;
 
-                        window.location = url;
-
-                    }
 
 
 

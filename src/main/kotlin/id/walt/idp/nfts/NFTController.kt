@@ -89,9 +89,9 @@ object NFTController {
           ChainEcosystem.FLOW -> {
 
             address = siwfManager.getAddress(message)
-           // siwfManager.verifySignature(session!!, message, signature)
+            siwfManager.verifySignature(session!!, message, signature)
 
-            true
+
 
           }
 

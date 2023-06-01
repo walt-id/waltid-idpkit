@@ -1,7 +1,6 @@
 package id.walt.idp.siwe
 
 import id.walt.idp.config.IDPConfig
-import id.walt.idp.config.IDPConfig.Companion.config
 import id.walt.idp.oidc.OIDCSession
 import io.ktor.client.*
 import io.ktor.client.call.*
@@ -10,9 +9,11 @@ import io.ktor.client.plugins.contentnegotiation.*
 import io.ktor.client.plugins.logging.*
 import io.ktor.client.request.*
 import io.ktor.serialization.kotlinx.json.*
+import io.ktor.util.*
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonEncoder
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
 
@@ -32,7 +33,7 @@ object siwfManager {
     expectSuccess = false
   }
 
-  fun verifySignature(session: OIDCSession, message: String,  signature: String): Boolean{
+  fun verifySignature(session: OIDCSession, message: String, signature: String): Boolean{
 
 
     val nonce= getNonce(message)
@@ -43,9 +44,9 @@ object siwfManager {
       return false
     }
     SiweManager.nonceBlacklists.add(nonce)
-
     return runBlocking {
-      val result = SiwnManager.client.get("${IDPConfig.config.jsProjectExternalUrl}/flow/signature/verification?signature=${signature}&message=${URLEncoder.encode(message, StandardCharsets.UTF_8)}") {
+      val result = client.post("${IDPConfig.config.jsProjectExternalUrl}/flow/signature/verification?signature=${URLEncoder.encode(signature, StandardCharsets.UTF_8.toString())}&message=${URLEncoder.encode(message, StandardCharsets.UTF_8.toString())}") {
+
       }.body<Boolean>()
       return@runBlocking result
     }
