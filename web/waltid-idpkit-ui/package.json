@@ -56,7 +56,6 @@
         "webpack": "^4.46.0"
     },
     "devDependencies": {
-        "@nuxt/types": "~2.15.8",
-        "@babel/plugin-proposal-object-rest-spread": "^7.20.7"
+        "@babel/plugin-proposal-private-property-in-object" : "^7.14.5"
     }
 }
