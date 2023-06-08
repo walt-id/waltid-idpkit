@@ -6,8 +6,7 @@ WORKDIR /code
 
 ADD web/waltid-idpkit-ui /code
 
-RUN export NODE_OPTIONS=--openssl-legacy-provider && \
-    yarn install -g -s --no--progress && \
+RUN yarn install -g -s --no--progress && \
     yarn build &&  \
     yarn generate
 
