@@ -69,8 +69,7 @@ export default {
                         loader: "babel-loader",
                         options: {
                             presets: [
-                                "@babel/preset-env",
-                                "@vue/cli-plugin-babel/preset",
+                                "@vue/cli-plugin-babel/preset"
                             ],
                             plugins: [
                                 "@babel/plugin-proposal-private-methods",

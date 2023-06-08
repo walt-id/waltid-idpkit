@@ -54,5 +54,8 @@
         "vue-template-compiler": "2.7.14",
         "web3modal": "^1.9.9",
         "webpack": "^4.46.0"
+    },
+    "devDependencies": {
+        "@babel/plugin-proposal-private-property-in-object" : "^7.14.5"
     }
 }
