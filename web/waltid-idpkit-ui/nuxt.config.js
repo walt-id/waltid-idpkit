@@ -38,11 +38,14 @@ export default {
         // https://go.nuxtjs.dev/bootstrap
         'bootstrap-vue/nuxt',
         '@nuxtjs/axios',
-        "@nuxtjs/proxy"
+        "@nuxtjs/proxy",
+
+
     ],
 
     // Build Configuration: https://go.nuxtjs.dev/config-build
     build: {
+
         babel: {
             compact: true,
         },
@@ -61,7 +64,43 @@ export default {
                 },
                 {
                     test: /\.m?js$/,
+                    include: /node_modules[/\\|]@onflow/i,
+                    use: {
+                        loader: "babel-loader",
+                        options: {
+                            presets: [
+                                "@babel/preset-env",
+                                "@vue/cli-plugin-babel/preset",
+                            ],
+                            plugins: [
+                                "@babel/plugin-proposal-private-methods",
+                                "@babel/plugin-proposal-class-properties",
+                                "@babel/plugin-proposal-object-rest-spread",
+                            ],
+                        },
+                    },
+                },
+                {
+                    test: /\.m?js$/,
                     include: /node_modules[/\\|]@polkadot/i,
+                    use: {
+                        loader: "babel-loader",
+                        options: {
+                            presets: [
+                                "@babel/preset-env",
+                                "@vue/cli-plugin-babel/preset",
+                            ],
+                            plugins: [
+                                "@babel/plugin-proposal-private-methods",
+                                "@babel/plugin-proposal-class-properties",
+                                "@babel/plugin-proposal-object-rest-spread",
+                            ],
+                        },
+                    },
+                },
+                {
+                    test: /\.m?js$/,
+                    include: /node_modules[/\\|]@noble/i,
                     use: {
                         loader: "babel-loader",
                         options: {
@@ -79,6 +118,7 @@ export default {
                 }
             );
         },
+
     },
 
 
