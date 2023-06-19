@@ -102,18 +102,35 @@ data:
             "EVM": {
               "chain": "POLYGON",
               "factorySmartContractAddress": "",
-              "smartContractAddress": "0x21dd9b1913d84ab295fdf19834b0b6824a5912ca"
+              "smartContractAddress": "0x21dd9b1913d84ab295fdf19834b0b6824a5912ca",
+              "collectionPath": ""
             },
             "TEZOS": {
               "chain": "GHOSTNET",
               "factorySmartContractAddress": "",
-              "smartContractAddress": "KT1Rc59ukgW32e54aUdYqVzTM9gtHrA4JDYp"
+              "smartContractAddress": "KT1Rc59ukgW32e54aUdYqVzTM9gtHrA4JDYp",
+              "collectionPath": ""
             },
             "NEAR": {
               "chain": "TESTNET",
               "factorySmartContractAddress": "",
-              "smartContractAddress": "demo.khaled_lightency1.testnet"
-            }
+              "smartContractAddress": "demo.khaled_lightency1.testnet",
+              "collectionPath": ""
+            },
+          "POLKADOT": {
+            "chain": "OPAL",
+            "factorySmartContractAddress": "",
+            "smartContractAddress": "1062",
+            "collectionPath": ""
+
+
+          },
+          "FLOW": {
+            "chain": "TESTNET",
+            "factorySmartContractAddress": "",
+            "smartContractAddress": "0xa9ccb9756a0ee7eb",
+            "collectionPath": "/public/exampleNFTCollection"
+          }
           }
         },
         "default_nft_policy":{
