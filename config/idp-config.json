@@ -72,24 +72,32 @@
         "ecosystems": [ "EVM", "TEZOS", "NEAR" ,"POLKADOT" , "FLOW"],
         "nftTokenContraints": {
           "EVM": {
-            "chain": "POLYGON",
+            "chain": "MUMBAI",
             "factorySmartContractAddress": "",
-            "smartContractAddress": "0x21dd9b1913d84ab295fdf19834b0b6824a5912ca"
+            "smartContractAddress": "0x3496756a84E186DC8C0d7ef91BcD393200ef5Ebc",
+            "collectionPath": ""
+
           },
           "TEZOS": {
             "chain": "GHOSTNET",
             "factorySmartContractAddress": "",
-            "smartContractAddress": "KT1Rc59ukgW32e54aUdYqVzTM9gtHrA4JDYp"
+            "smartContractAddress": "KT1Rc59ukgW32e54aUdYqVzTM9gtHrA4JDYp",
+            "collectionPath": ""
+
           },
           "NEAR": {
             "chain": "TESTNET",
             "factorySmartContractAddress": "",
-            "smartContractAddress": "demo.khaled_lightency1.testnet"
+            "smartContractAddress": "demo.khaled_lightency1.testnet",
+            "collectionPath": ""
+
           },
           "POLKADOT": {
             "chain": "OPAL",
             "factorySmartContractAddress": "",
-            "smartContractAddress": "1062"
+            "smartContractAddress": "1062",
+            "collectionPath": ""
+
 
           },
           "FLOW": {
