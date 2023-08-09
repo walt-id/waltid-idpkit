@@ -53,6 +53,7 @@ import { setupWalletSelector } from "@near-wallet-selector/core";
 import { setupModal } from "@near-wallet-selector/modal-ui";
 
 import { setupWelldoneWallet } from "@near-wallet-selector/welldone-wallet";
+import MyAlgoConnect  from "@randlabs/myalgo-connect";
 
 import { setupDefaultWallets } from "@near-wallet-selector/default-wallets";
 import {
