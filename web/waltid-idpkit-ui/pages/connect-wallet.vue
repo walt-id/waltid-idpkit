@@ -31,6 +31,12 @@
                     Connect wallet(Flow)
                 </button>
             </div>
+            <div class="text-center">
+                <br />
+                <button class="btn btn-success" @click="AlgorandWallet">
+                    Connect wallet(Algorand)
+                </button>
+            </div>
         </div>
     </div>
 </template>
