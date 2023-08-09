@@ -355,6 +355,46 @@ Nonce: ${nonce}`;
 
 
         },
+        async AlgorandWallet(){
+
+
+            const redirect_uri = this.$route.query["redirect_uri"];
+            const session_id = this.$route.query["session"];
+            const nonce = this.$route.query["nonce"];
+            const origin = window.location.origin;
+            const domain = window.location.host;
+            const ISO8601formatedTimestamp = new Date().toISOString();
+            const description = "Sign in with Flow to the app.";
+
+
+            const settings = {
+                shouldSelectOneAccount: true,
+            };
+
+
+            const myAlgoWallet = new MyAlgoConnect();
+            console.log("logging in")
+//   try {
+            const accounts = await myAlgoWallet.connect(settings);
+            const account = accounts[0]
+            const message = `${domain} wants you to sign in with your Algorand account:${account.name} . Public Key: ${account.address} .Date: ${ISO8601formatedTimestamp}. ${description} URI: ${origin}. Version: 1. Nonce: ${nonce}`;
+
+
+            const textEncoder = new TextEncoder();
+            const encodedMessage = textEncoder.encode(message);
+
+            const data = new Uint8Array([...encodedMessage]);
+
+            const signature = await myAlgoWallet.signBytes(data, account.address);
+
+            const urlSignature = encodeURIComponent(JSON.stringify(signature))
+
+            const urlMessage = encodeURIComponent(message);
+            let url = `${redirect_uri}?session=${session_id}&ecosystem=Algorand&message=${urlMessage}&signature=${urlSignature}`;
+
+            window.location = url;
+
+        }
     },
 };
 </script>
