@@ -91,8 +91,12 @@ object NFTController {
             address = siwfManager.getAddress(message)
             siwfManager.verifySignature(session!!, message, signature)
 
+          }
 
-
+          ChainEcosystem.ALGORAND -> {
+            address = siwaManager.getAddress(message)
+            val publicKey = siwaManager.getPublicKey(message)
+            siwaManager.verifySignature(session!!, message, publicKey,signature)
           }
 
         }
