@@ -105,6 +105,12 @@
             "factorySmartContractAddress": "",
             "smartContractAddress": "0xa9ccb9756a0ee7eb",
             "collectionPath": "/public/exampleNFTCollection"
+          },
+          "ALGORAND": {
+            "chain": "TESTNET",
+            "factorySmartContractAddress": "",
+            "smartContractAddress": "",
+            "collectionPath": ""
           }
         }
     },
