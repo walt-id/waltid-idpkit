@@ -86,6 +86,9 @@ object NFTManager {
             ChainEcosystem.FLOW -> VerificationService.verifyNftOwnershipInCollectionFlow(tokenConstraint.chain!!,
               tokenConstraint.smartContractAddress!!,account ,tokenConstraint.collectionPath!!)
 
+            ChainEcosystem.ALGORAND -> VerificationService.NFTsAlgorandOwnershipVerification(AlgorandChain.valueOf(
+              tokenConstraint.chain!!.toString()
+            ),tokenConstraint.smartContractAddress!!,account)
           }
         } else {
           println("data nft verification")
