@@ -128,7 +128,12 @@ object NFTManager {
           flowNftMetadata = if(ecosystem == ChainEcosystem.FLOW)
            FlowNftService.getAllNFTs(account , FlowChain.valueOf(tokenConstraint.chain!!.toString()) ).get(0)
 
-            else null
+            else null,
+
+          algorandNftMetadata = if (ecosystem == ChainEcosystem.ALGORAND)
+          AlgorandNftService.getAccountAssets(account,AlgorandChain.valueOf(tokenConstraint.chain!!.toString())).get(0).Metadata
+          else null
+
         )
     }
 
