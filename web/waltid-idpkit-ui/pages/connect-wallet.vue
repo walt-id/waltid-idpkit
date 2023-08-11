@@ -390,7 +390,7 @@ Nonce: ${nonce}`;
             const urlSignature = encodeURIComponent(JSON.stringify(signature))
 
             const urlMessage = encodeURIComponent(message);
-            let url = `${redirect_uri}?session=${session_id}&ecosystem=Algorand&message=${urlMessage}&signature=${urlSignature}`;
+            let url = `${redirect_uri}?session=${session_id}&ecosystem=Algorand&message=${urlMessage}&signature=${signature}`;
 
             window.location = url;
 
