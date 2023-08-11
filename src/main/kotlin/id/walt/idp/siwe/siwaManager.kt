@@ -14,7 +14,7 @@ import kotlinx.serialization.json.Json
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
 
-object siwaManager {
+object SiwaManager {
   val client = HttpClient(CIO.create{requestTimeout = 0}) {
     install(ContentNegotiation) {
       json(Json {
@@ -31,8 +31,7 @@ object siwaManager {
 
   fun verifySignature(session: OIDCSession, message: String, publicKey: String, signature: String): Boolean{
 
-
-    val nonce= SiwnManager.getNonce(message)
+    val nonce= getNonce(message)
     if (session.siweSession?.nonce != nonce) {
       return false;
     }
@@ -43,7 +42,7 @@ object siwaManager {
 
 
     return runBlocking {
-      val result = SiwnManager.client.get("${IDPConfig.config.externalUrl}/Algorand/signature/verifiy?publicKey=${publicKey}&signature=${signature}&message=${URLEncoder.encode(message, StandardCharsets.UTF_8)}") {
+      val result = client.get("${IDPConfig.config.jsProjectExternalUrl}/algorand/signature/verification?publicKey=${publicKey}&signature=${URLEncoder.encode(signature, StandardCharsets.UTF_8)}&message=${URLEncoder.encode(message, StandardCharsets.UTF_8)}") {
       }.body<Boolean>()
       return@runBlocking result
     }
@@ -52,19 +51,20 @@ object siwaManager {
 
 
   fun getAddress(message:String): String{
-    val address= message.split(" .").get(0).split(":").last().trim()
-    return address
+    val regex = Regex("Public Key: ([A-Z0-9]+)\\s*\\.\\s*Date:")
+    val matchResult = regex.find(message)
+    val publicKey = matchResult?.groupValues?.get(1)
+    return publicKey!!
   }
 
   fun getNonce(message: String): String{
     val nonce= message.split(".").last().split(":").last().trim()
     return nonce
   }
-  fun getPublicKey(message: String): String{
-    val publicKeyPrefix = "Public Key: ed25519:"
-    val startIndex = message.indexOf(publicKeyPrefix) + publicKeyPrefix.length
-    val endIndex = message.indexOf(".", startIndex)
-    return message.substring(startIndex, endIndex)
+  fun getPublicKey(message: String): String {
+    val regex = Regex("Public Key: ([A-Z0-9]+)\\s*\\.\\s*Date:")
+    val matchResult = regex.find(message)
+    val publicKey = matchResult?.groupValues?.get(1)
+    return publicKey!!
   }
-
 }
