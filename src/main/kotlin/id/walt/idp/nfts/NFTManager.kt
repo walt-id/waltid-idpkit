@@ -88,7 +88,7 @@ object NFTManager {
 
             ChainEcosystem.ALGORAND -> VerificationService.NFTsAlgorandOwnershipVerification(AlgorandChain.valueOf(
               tokenConstraint.chain!!.toString()
-            ),tokenConstraint.smartContractAddress!!,account)
+            ),account,tokenConstraint.smartContractAddress!!)
           }
         } else {
           println("data nft verification")
