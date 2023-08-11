@@ -86,6 +86,9 @@ object NFTManager {
             ChainEcosystem.FLOW -> VerificationService.verifyNftOwnershipInCollectionFlow(tokenConstraint.chain!!,
               tokenConstraint.smartContractAddress!!,account ,tokenConstraint.collectionPath!!)
 
+            ChainEcosystem.ALGORAND -> VerificationService.NFTsAlgorandOwnershipVerification(AlgorandChain.valueOf(
+              tokenConstraint.chain!!.toString()
+            ),account,tokenConstraint.smartContractAddress!!)
           }
         } else {
           println("data nft verification")
@@ -125,7 +128,12 @@ object NFTManager {
           flowNftMetadata = if(ecosystem == ChainEcosystem.FLOW)
            FlowNftService.getAllNFTs(account , FlowChain.valueOf(tokenConstraint.chain!!.toString()) ).get(0)
 
-            else null
+            else null,
+
+          algorandNftMetadata = if (ecosystem == ChainEcosystem.ALGORAND)
+          AlgorandNftService.getAccountAssets(account,AlgorandChain.valueOf(tokenConstraint.chain!!.toString())).get(0).Metadata
+          else null
+
         )
     }
 

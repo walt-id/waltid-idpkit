@@ -38,6 +38,7 @@
         "@polkadot/api": "^10.8.1",
         "@polkadot/extension-dapp": "^0.46.4",
         "@polkadot/util": "^12.2.2",
+        "@randlabs/myalgo-connect": "^1.4.2",
         "@taquito/beacon-wallet": "^15.0.0",
         "@taquito/taquito": "^15.0.0",
         "@vue/cli-plugin-babel": "^5.0.8",
@@ -56,6 +57,6 @@
         "webpack": "^4.46.0"
     },
     "devDependencies": {
-        "@babel/plugin-proposal-private-property-in-object" : "^7.14.5"
+        "@babel/plugin-proposal-private-property-in-object": "^7.14.5"
     }
 }

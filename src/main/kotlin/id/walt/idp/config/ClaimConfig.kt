@@ -61,7 +61,7 @@ class NFTClaimMapping(
         }
         ChainEcosystem.POLKADOT -> verificationResult.nftresponseVerificationResult.metadata?.uniqueNftMetadata?.attributes?.let { a -> a.firstOrNull { a -> a.name == mappingDefinition.trait }?.value}
         ChainEcosystem.FLOW ->  verificationResult.nftresponseVerificationResult.metadata?.flowNftMetadata?.traits?.traits?.firstOrNull { a -> a.name == mappingDefinition.trait }?.value
-
+        ChainEcosystem.ALGORAND -> verificationResult.nftresponseVerificationResult.metadata?.algorandNftMetadata
 
       }?: throw BadRequestResponse("Requested nft metadata trait not found in verification response")
 
