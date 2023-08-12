@@ -50,12 +50,7 @@ object SiwaManager {
 
 
 
-  fun getAddress(message:String): String{
-    val regex = Regex("Public Key: ([A-Z0-9]+)\\s*\\.\\s*Date:")
-    val matchResult = regex.find(message)
-    val publicKey = matchResult?.groupValues?.get(1)
-    return publicKey!!
-  }
+
 
   fun getNonce(message: String): String{
     val nonce= message.split(".").last().split(":").last().trim()
