@@ -86,9 +86,16 @@ object NFTManager {
             ChainEcosystem.FLOW -> VerificationService.verifyNftOwnershipInCollectionFlow(tokenConstraint.chain!!,
               tokenConstraint.smartContractAddress!!,account ,tokenConstraint.collectionPath!!)
 
-            ChainEcosystem.ALGORAND -> VerificationService.NFTsAlgorandOwnershipVerification(AlgorandChain.valueOf(
-              tokenConstraint.chain!!.toString()
-            ),account,tokenConstraint.smartContractAddress!!)
+//            ChainEcosystem.ALGORAND -> VerificationService.NFTsAlgorandOwnershipVerification(AlgorandChain.valueOf(
+//              tokenConstraint.chain!!.toString()
+//            ),account,tokenConstraint.smartContractAddress!!)
+            ChainEcosystem.ALGORAND-> AlgorandNftService.verifyOwnerShipBasedOnCreator(
+              account,
+              AlgorandChain.valueOf(tokenConstraint.chain!!.toString()),
+              tokenConstraint.smartContractAddress!!)
+            else -> false.also {
+              logger.error { "Collection ownership verification not supported for $ecosystem ecosystem" }
+            }
           }
         } else {
           println("data nft verification")
