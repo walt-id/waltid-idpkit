@@ -21,6 +21,7 @@ providers:
     moonbeam: "https://rpc.api.moonbeam.network"
     unique: "https://rpc.unique.network"
     opal: "https://rpc-opal.unique.network"
+    shimmerevm: "https://json-rpc.evm.testnet.shimmer.network"
 
 
 privateKey: "bd4cb3e507f342ee3a710370cef39dda48f17b0a158b0b8dd3f000fbd5b2c2d9"
