@@ -46,5 +46,7 @@ apiKeys:
   nftstorage: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJkaWQ6ZXRocjoweDYwNDNEYThENjU2RTU3NTg2ZDk3MkM1ZDM5RUNENzI1NTNCM2Q1NjAiLCJpc3MiOiJuZnQtc3RvcmFnZSIsImlhdCI6MTY1NDYxNTQ2NjIwNCwibmFtZSI6Ik5GVCBLSVQifQ.PkMJpU3aJMQXqzq1nPnHJcWJR-32as3bQed3GBszMdg
 "
   subscan: ""
+  shimmerBlockExplorer: ""
+
 tezosBackendServer: "http://localhost:4000"
 
