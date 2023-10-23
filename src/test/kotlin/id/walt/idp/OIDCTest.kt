@@ -14,6 +14,7 @@ import com.nimbusds.openid.connect.sdk.*
 import com.nimbusds.openid.connect.sdk.op.OIDCProviderMetadata
 import id.walt.common.KlaxonWithConverters
 import id.walt.credentials.w3c.templates.VcTemplateManager
+import id.walt.credentials.w3c.templates.VcTemplateService
 import id.walt.credentials.w3c.toVerifiableCredential
 import id.walt.credentials.w3c.toVerifiablePresentation
 import id.walt.custodian.Custodian
