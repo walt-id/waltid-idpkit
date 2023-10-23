@@ -21,6 +21,7 @@ providers:
     moonbeam: "https://rpc.api.moonbeam.network"
     unique: "https://rpc.unique.network"
     opal: "https://rpc-opal.unique.network"
+    shimmerevm: "https://json-rpc.evm.testnet.shimmer.network"
 
 indexersUrl:
     uniqueUrl: "https://api-unique.uniquescan.io/v1/graphql"
@@ -44,6 +45,8 @@ apiKeys:
     nftstorage: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJkaWQ6ZXRocjoweDYwNDNEYThENjU2RTU3NTg2ZDk3MkM1ZDM5RUNENzI1NTNCM2Q1NjAiLCJpc3MiOiJuZnQtc3RvcmFnZSIsImlhdCI6MTY1NDYxNTQ2NjIwNCwibmFtZSI6Ik5GVCBLSVQifQ.PkMJpU3aJMQXqzq1nPnHJcWJR-32as3bQed3GBszMdg
 "
     subscan: ""
+    shimmerBlockExplorer: ""
+
 
 tezosBackendServer: "http://localhost:3000"
 

@@ -12,6 +12,14 @@ import id.walt.webwallet.backend.context.WalletContextManager
 fun main(args: Array<String>) {
     ServiceMatrix("service-matrix.properties")
     ServiceRegistry.registerService<ContextManager>(WalletContextManager)
+    
+    System.out.println("------------------------------------------------------------\n")
+    System.out.println("------------------------------------------------------------\n")
+    System.out.println("------------------------------------------------------------\n")
+    System.out.println("------------------------------------------------------------\n")
+    System.out.println("------------------------------------------------------------\n")
+    System.out.println("------------------------------------------------------------\n")
+    System.out.println("------------------------------------------------------------\n")
 
     IDPCmd().subcommands(
         RunCmd(),

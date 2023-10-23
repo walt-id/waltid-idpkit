@@ -107,7 +107,7 @@
             "collectionPath": "/public/exampleNFTCollection"
           },
           "ALGORAND": {
-            "chain": "TESTNET",
+            "chain": "ALGORAND_TESTNET",
             "factorySmartContractAddress": "",
             "smartContractAddress": "GYFVJLKGSWQDHFBHBLABUXYHHSU544RV3WH4ZCF3S6HONSDP73TK4VGY3Y",
             "collectionPath": ""
