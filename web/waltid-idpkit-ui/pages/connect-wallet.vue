@@ -33,7 +33,7 @@
             </div>
             <div class="text-center">
                 <br />
-                <button class="btn btn-success" @click="AlgorandWallet">
+                <button class="btn btn-success" @click="peraConnect">
                     Connect wallet(Algorand)
                 </button>
             </div>
@@ -67,7 +67,7 @@ import {
     Signer,
 } from "near-api-js";
 import * as buffer from "buffer";
-
+import {PeraWalletConnect} from "@perawallet/connect";
 import {
     web3Accounts,
     web3Enable,
@@ -137,12 +137,12 @@ export default {
                 const domain = window.location.host;
 
                 const eip4361msg = `${domain} wants you to sign in with your Ethereum account:
-${signerAddress}
-${description}
-URI: ${origin}
-Version: 1
-Chain ID: 1
-Nonce: ${nonce}`;
+                ${signerAddress}
+                ${description}
+                URI: ${origin}
+                Version: 1
+                Chain ID: 1
+                Nonce: ${nonce}`;
 
                 let msgSignature;
                 try {
@@ -197,31 +197,6 @@ Nonce: ${nonce}`;
             }
         },
         async nearWallet() {
-            //   const myKeyStore = new keyStores.InMemoryKeyStore();
-            //    const PRIVATE_KEY =
-            //        "dKS78f3o3kyifKfjdPUkkWcVYa8wL48NwXgb7eLa3Nz5ocdmoZRNdDWFJkbYCNvVGkioyHkV7PBQBmPqiTweQ5W";
-            //    const keyPair = KeyPair.fromString(PRIVATE_KEY);
-            //    const publicKey = keyPair.getPublicKey().toString();
-            //
-            //
-            //
-            //
-            //    const redirect_uri = this.$route.query["redirect_uri"]
-            //    const session_id = this.$route.query["session"]
-            //    const nonce= this.$route.query["nonce"]
-            //    const origin = window.location.origin;
-            //    const domain = window.location.host;
-            //    const ISO8601formatedTimestamp = new Date().toISOString();
-            //    const description = 'Sign in with Tezos to the app.';
-            //    const msg = Buffer.from(`${domain} wants you to sign in with your Near account: . Public Key: ${publicKey} .Date: ${ISO8601formatedTimestamp}. ${description} URI: ${origin}. Version: 1. Nonce: ${nonce}`);
-            //    console.log("msg",msg.toString())
-            //    const { signature } = keyPair.sign(msg);
-            //    console.log("signature",signature)
-            //    const isValid = keyPair.verify(msg, signature);
-            //
-            //    console.log("Signature Valid?:", isValid);
-
-            // window.location = `${redirect_uri}?session=${session_id}&chain=TESTNET&message=${msg}&signature=${signature}`
 
             try {
                 const selector = await setupWalletSelector({
@@ -387,12 +362,67 @@ Nonce: ${nonce}`;
 
             const signature = await myAlgoWallet.signBytes(data, account.address);
 
+            console.log("signature",signature);
+
             const urlSignature = encodeURIComponent(JSON.stringify(signature))
 
             const urlMessage = encodeURIComponent(message);
             let url = `${redirect_uri}?session=${session_id}&ecosystem=Algorand&message=${urlMessage}&signature=${signature}`;
 
             window.location = url;
+
+        },
+        async peraConnect (){
+
+
+            const redirect_uri = this.$route.query["redirect_uri"];
+            const session_id = this.$route.query["session"];
+            const nonce = this.$route.query["nonce"];
+            const origin = window.location.origin;
+            const domain = window.location.host;
+            const ISO8601formatedTimestamp = new Date().toISOString();
+            const description = "Sign in with Algorand to the app.";
+
+
+            const peraWallet = new PeraWalletConnect({
+                chainId: 416002,
+                shouldShowSignTxnToast: false
+            });
+            peraWallet
+                .connect()
+                .then(async (newAccounts) => {
+                    // Setup the disconnect event listener
+                    peraWallet.connector?.on("disconnect", () => {
+                        console.log("disconnected");
+                        peraWallet.disconnect();
+
+                    });
+                    let account = newAccounts[0];
+                    console.log("account", account);
+                    const message = `${domain} wants you to sign in with your Algorand account:${account} . Public Key: ${account} .Date: ${ISO8601formatedTimestamp}. ${description} URI: ${origin}. Version: 1. Nonce: ${nonce}`;
+                    const textEncoder = new TextEncoder();
+                    const encodedMessage = textEncoder.encode(message);
+
+                    const signedData = await peraWallet.signData([
+                        {
+                            data: new Uint8Array(Buffer.from(encodedMessage)),
+                            message: "Message confirmation"
+                        },
+                        {
+                            data: new Uint8Array(Buffer.from(`agent//${navigator.userAgent}`)),
+                            message: "User agent confirmation"
+                        }
+                    ], account);
+
+                    const urlMessage = encodeURIComponent(message);
+                    let url = `${redirect_uri}?session=${session_id}&ecosystem=Algorand&message=${urlMessage}&signature=${signedData[0]}`;
+
+                    window.location = url;
+
+                }).catch((error) => {
+                    console.log("error", error);
+                });
+
 
         }
     },
