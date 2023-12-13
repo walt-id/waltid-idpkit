@@ -19,6 +19,10 @@
 
 </div>
 
+## Compatibility Notice & Updates
+Please note that the IDP-Kit currently only works with the [SSI-Kit](https://github.com/walt-id/waltid-ssikit), [Wallet-Kit](https://github.com/walt-id/waltid-walletkit) and [NFT-Kit](https://github.com/walt-id/waltid-nftkit), but is not yet compatible with our new products under [The Community Stack](https://walt.id/blog/p/community-stack). We plan to update the IDP-Kit to be fully compatible with the new stack by end of Q1 2024.
+
+
 ## Getting Started
 
 - [REST Api](https://docs.walt.id/v/idpkit/getting-started/rest-apis) - Launch your OIDC compliant identity provider.
