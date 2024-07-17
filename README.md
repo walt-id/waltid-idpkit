@@ -20,7 +20,7 @@
 </div>
 
 ## Compatibility Notice & Updates
-Please note that the IDP-Kit currently only works with the [SSI-Kit](https://github.com/walt-id/waltid-ssikit), [Wallet-Kit](https://github.com/walt-id/waltid-walletkit) and [NFT-Kit](https://github.com/walt-id/waltid-nftkit), but is not yet compatible with our new products under [The Community Stack](https://walt.id/blog/p/community-stack). We plan to update the IDP-Kit to be fully compatible with the new stack by end of Q1 2024.
+Please note that the IDP-Kit currently only works with the [SSI-Kit](https://github.com/walt-id/waltid-ssikit), [Wallet-Kit](https://github.com/walt-id/waltid-walletkit) and [NFT-Kit](https://github.com/walt-id/waltid-nftkit), but is not yet compatible with our new products under [The Community Stack](https://walt.id/blog/p/community-stack). If you are intersted in using it with our new stack, please reach out [here](https://walt.id/discord).
 
 
 ## Getting Started
