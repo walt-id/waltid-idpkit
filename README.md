@@ -1,3 +1,12 @@
+## 🚨 Repository Moved
+
+> [!IMPORTANT]
+> This repository is no longer maintained.
+> 
+> All walt.id development continues in the monorepo:
+> 
+### 👉 Code **https://github.com/walt-id/waltid-identity** & Docs **https://docs.walt.id**
+
 <div align="center">
  <h1>IDP Kit</h1>
  <span>by </span><a href="https://walt.id">walt.id</a>
